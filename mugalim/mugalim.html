@@ -270,6 +270,7 @@ function renderLinks(){
   const r = encodeURIComponent(u);
   $("links").innerHTML = [["Білім картасы","bilim-kartasy"],["Құпия сейф","kupiya-seif"]].map(([n,p]) =>
     `<label><b>${n}</b><input type="text" readonly value="${esc(base+"/"+p+"/?r="+r)}" onclick="this.select()"></label>`).join("");
+  $("links").innerHTML += `<label><b>🏆 Марапаттау рәсімі (проекторға, тек мұғалімге)</b><input type="text" readonly value="${esc(base+"/kupiya-seif/?r="+r+"#ceremony")}" onclick="this.select()"></label>`;
 }
 $("base").value = LS.get("base") || "https://kolto-blip.github.io/-";
 $("base").oninput = ()=>{ renderLinks(); renderDemo(); };

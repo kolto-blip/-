@@ -1202,7 +1202,7 @@ function makeActor(body, kind, dragonTeam){
   const obj = g.scene; spin.add(obj);
   const head = new THREE.Object3D(); yaw.add(head);
   if(RIGGED[name]){
-    const dim = fitModel(obj, name === "horse" || name === "stag" ? 2.5 : 2.3, true);
+    const dim = fitModel(obj, name === "horse" || name === "stag" ? 2.5 : 2.8, true);
     head.position.set(0, dim.height*.82, dim.length*.42);
     const mixer = new THREE.AnimationMixer(obj), acts = {};
     g.animations.forEach(c=>{ acts[c.name] = mixer.clipAction(c); });
@@ -1211,7 +1211,7 @@ function makeActor(body, kind, dragonTeam){
     const PARTY = kind === "gallop" ? pick("Attack_Kick", "Idle_2") : kind === "leap" ? pick("Attack_Headbutt", "Idle_2") : kind === "howl" ? pick("Idle_2_HeadLow", "Idle_2") : IDLE2;
     let cur = null, lastT = null;
     const play = n=>{ if(!n || n === cur) return; const a = acts[n]; a.reset().fadeIn(.25).play(); if(cur) acts[cur].fadeOut(.25); cur = n; };
-    return {root, yaw, head, height: dim.height, yawMove: Math.PI/2, yawRest: .35,
+    return {root, yaw, head, height: dim.height, yawMove: Math.PI/2, yawRest: .95,
       animate(m, t){
         if(!m.visible) play(IDLE);
         else if(m.moving) play(m.y > .35 ? JUMP : kind === "sneak" && t < T_IN + m.D*.75 ? WALK : RUN);
@@ -1222,7 +1222,7 @@ function makeActor(body, kind, dragonTeam){
   // 3moji: қаңқасы жоқ, денесін бүтіндей қимылдатамыз (секіру, теңселу, айналу)
   const dim = fitModel(obj, STATIC_SIZE[name] || 2, false);
   head.position.set(-dim.length*.35, dim.height*.8, 0);
-  return {root, yaw, head, height: dim.height, yawMove: Math.PI, yawRest: .6,
+  return {root, yaw, head, height: dim.height, yawMove: Math.PI, yawRest: 0,
     animate(m, t){
       const k = m.moving ? Math.sin(t*14) : 0;
       spin.rotation.z = m.moving ? k*.07 : Math.sin(t*2.5)*.04;
@@ -1255,7 +1255,7 @@ function scene3d(avatar, place, teamColor, still, dragon){
   const gold = cssVar(win,"--medal") || "#f4c542", hi = cssVar(win,"--medal-hi") || "#ffe38a", lo = cssVar(win,"--medal-lo") || "#a8761c";
   const scene = new THREE.Scene(); r3.scene = scene;
   const cam = new THREE.PerspectiveCamera(32, W/H, .1, 100);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, .6));
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, .78));
   const sun = new THREE.DirectionalLight(0xffffff, .85); sun.position.set(3,8,6); sun.castShadow = true;
   sun.shadow.mapSize.set(1024,1024); Object.assign(sun.shadow.camera, {left:-5,right:4,top:5,bottom:-3,near:1,far:25});
   scene.add(sun);

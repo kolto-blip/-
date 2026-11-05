@@ -86,13 +86,12 @@ code{font-family:var(--f-mono);background:var(--soft);padding:1px 5px;border-rad
     <div class="msg" id="msg">Сілтеме әлі енгізілмеген. «Баптау» бөліміндегі нұсқаулықты орындаңыз.</div>
     <div class="row">
       <select id="f-game" aria-label="Ойын"><option value="">Барлық ойын</option></select>
-      <select id="f-cls" aria-label="Сынып"><option value="">Барлық сынып</option></select>
     </div>
     <h3>Топтардың қорытындысы</h3>
     <div class="summary" id="summary"><p class="muted">Нәтиже келгенде осында әр топтың ұпайы мен уақыты шығады.</p></div>
     <h3>Барлық жауаптар (соңғысы жоғарыда)</h3>
     <div class="tablewrap"><table>
-      <thead><tr><th>Уақыты</th><th>Ойын</th><th>Сынып</th><th>Топ</th><th>Оқиға</th><th>Тапсырма</th><th>Жауап</th><th>Нәтиже</th><th>Ұпай / уақыт</th><th>Жалпы</th></tr></thead>
+      <thead><tr><th>Уақыты</th><th>Ойын</th><th>Топ</th><th>Оқиға</th><th>Тапсырма</th><th>Жауап</th><th>Нәтиже</th><th>Ұпай / уақыт</th><th>Жалпы</th></tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
   </section>
@@ -118,7 +117,7 @@ code{font-family:var(--f-mono);background:var(--soft);padding:1px 5px;border-rad
     <pre id="code">// Ойын нәтижелерін Google Кестеге жинау.
 // Кесте → Кеңейтімдер → Apps Script → осы кодты қойып, «Веб-қосымша» ретінде жариялаңыз.
 const SHEET_NAME = 'Нәтижелер';
-const HEAD = ['Уақыты', 'Ойын', 'Сынып', 'Топ', 'Оқиға', 'Тапсырма', 'Жауап', 'Нәтиже', 'Ұпай / уақыт', 'Жалпы'];
+const HEAD = ['Уақыты', 'Ойын', 'Топ', 'Оқиға', 'Тапсырма', 'Жауап', 'Нәтиже', 'Ұпай / уақыт', 'Жалпы'];
 
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -139,7 +138,7 @@ function doPost(e) {
   lock.waitLock(10000);
   try {
     sheet_().appendRow([
-      new Date(), d.game || '', d.cls || '', d.team || '', d.event || '',
+      new Date(), d.game || '', d.team || '', d.event || '',
       d.task || '', d.answer || '', d.result || '',
       d.points === undefined ? '' : d.points, d.total === undefined ? '' : d.total
     ]);
@@ -163,7 +162,7 @@ function doGet() {
     <div class="row"><input type="url" id="base" placeholder="https://mening-oiynym.netlify.app" aria-label="Сайт мекенжайы"></div>
     <div class="links" id="links"><p class="muted">Алдымен 1-қадамдағы сілтемені және сайт мекенжайын енгізіңіз.</p></div>
     <p><b>Ә жолы, файл арқылы (WhatsApp, Telegram).</b> Ойын файлын мәтіндік редактормен ашып, <code>const RESULTS_URL = "";</code> жолындағы тырнақшаның ішіне 1-қадамдағы сілтемені қойыңыз. Содан кейін файлды оқушыларға жіберіңіз.</p>
-    <p class="muted">Ойындағы «Сынып» өрісіне сыныпты (мысалы, 7А) жазғызыңыз, сонда нәтижелерді сынып бойынша сүзе аласыз. Интернет уақытша болмаса, нәтижелер құрылғыда сақталып, байланыс қалпына келгенде жіберіледі.</p>
+    <p class="muted">Интернет уақытша болмаса, нәтижелер құрылғыда сақталып, байланыс қалпына келгенде жіберіледі.</p>
   </section>
 </div>
 
@@ -261,38 +260,38 @@ async function load(){
 }
 function setMsg(t, c){ $("msg").textContent = t; $("msg").className = "msg " + c; }
 function fillFilters(){
-  for(const [id, col] of [["f-game",1],["f-cls",2]]){
+  for(const [id, col] of [["f-game",1]]){
     const sel = $(id), cur = sel.value, first = sel.options[0].outerHTML;
     const vals = [...new Set(rows.map(r => String(r[col])).filter(Boolean))].sort();
     sel.innerHTML = first + vals.map(v => `<option${v===cur?" selected":""}>${esc(v)}</option>`).join("");
   }
 }
 function render(){
-  const g = $("f-game").value, c = $("f-cls").value;
-  const list = rows.filter(r => (!g || r[1] === g) && (!c || String(r[2]) === c));
+  const g = $("f-game").value;
+  const list = rows.filter(r => (!g || r[1] === g));
   const fmtT = v => { const d = new Date(v); return isNaN(d) ? esc(v) : d.toLocaleString(); };
   $("rows").innerHTML = list.slice().reverse().map(r => `<tr>${r.map((v,i) => {
-    const cls = i===7 ? (/дұрыс|ашылды|1-орын/.test(v) ? "ok" : /қате/.test(v) ? "no" : "") : "";
+    const cls = i===6 ? (/дұрыс|ашылды|1-орын/.test(v) ? "ok" : /қате/.test(v) ? "no" : "") : "";
     return `<td class="${cls}">${i===0 ? fmtT(v) : esc(v)}</td>`; }).join("")}</tr>`).join("")
-    || '<tr><td colspan="10" class="muted">Әзірге жазба жоқ.</td></tr>';
+    || '<tr><td colspan="9" class="muted">Әзірге жазба жоқ.</td></tr>';
   // summary per game + class + team
   const teams = new Map();
   for(const r of list){
-    const k = r[1]+"|"+r[2]+"|"+r[3];
-    const t = teams.get(k) || {game:r[1], cls:r[2], team:r[3], total:"", right:0, wrong:0, opened:"", place:""};
-    if(r[4]==="Жауап"){ r[7]==="дұрыс" ? t.right++ : t.wrong++; }
-    if(r[9] !== "") t.total = r[9];
-    if(r[4]==="Сейф" && r[7]==="ашылды") t.opened = r[8];
-    if(r[4]==="Қорытынды") t.place = r[7];
+    const k = r[1]+"|"+r[2];
+    const t = teams.get(k) || {game:r[1], team:r[2], total:"", right:0, wrong:0, opened:"", place:""};
+    if(r[3]==="Жауап"){ r[6]==="дұрыс" ? t.right++ : t.wrong++; }
+    if(r[8] !== "") t.total = r[8];
+    if(r[3]==="Сейф" && r[6]==="ашылды") t.opened = r[7];
+    if(r[3]==="Қорытынды") t.place = r[6];
     teams.set(k, t);
   }
   $("summary").innerHTML = teams.size ? [...teams.values()].map(t => `<div class="team">
-      <span class="g">${esc(t.game)}${t.cls ? " · " + esc(t.cls) : ""}</span><b>${esc(t.team)}</b>
+      <span class="g">${esc(t.game)}</span><b>${esc(t.team)}</b>
       <span class="big">${t.game==="Құпия сейф" ? (t.opened ? "ашты · " + esc(t.opened) : esc(t.total || "0/5")) : esc(t.total || 0) + " ұпай"}</span>
       <span class="muted">Дұрыс: ${t.right} · Қате: ${t.wrong}${t.place ? " · " + esc(t.place) : ""}</span></div>`).join("")
     : '<p class="muted">Нәтиже келгенде осында әр топтың ұпайы мен уақыты шығады.</p>';
 }
-$("f-game").onchange = render; $("f-cls").onchange = render;
+$("f-game").onchange = render;
 $("load").onclick = load;
 function arm(){ clearInterval(timer); if($("auto").checked) timer = setInterval(load, 15000); }
 $("auto").onchange = arm;

@@ -1,7 +1,7 @@
 // Ойын нәтижелерін Google Кестеге жинау.
 // Кесте → Кеңейтімдер → Apps Script → осы кодты қойып, «Веб-қосымша» ретінде жариялаңыз.
 const SHEET_NAME = 'Нәтижелер';
-const HEAD = ['Уақыты', 'Ойын', 'Сынып', 'Топ', 'Оқиға', 'Тапсырма', 'Жауап', 'Нәтиже', 'Ұпай / уақыт', 'Жалпы'];
+const HEAD = ['Уақыты', 'Ойын', 'Топ', 'Оқиға', 'Тапсырма', 'Жауап', 'Нәтиже', 'Ұпай / уақыт', 'Жалпы'];
 
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -22,7 +22,7 @@ function doPost(e) {
   lock.waitLock(10000);
   try {
     sheet_().appendRow([
-      new Date(), d.game || '', d.cls || '', d.team || '', d.event || '',
+      new Date(), d.game || '', d.team || '', d.event || '',
       d.task || '', d.answer || '', d.result || '',
       d.points === undefined ? '' : d.points, d.total === undefined ? '' : d.total
     ]);

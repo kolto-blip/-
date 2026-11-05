@@ -34,8 +34,6 @@ header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
 h1{font-family:var(--f-display);font-weight:700;font-size:clamp(38px,7vw,64px);line-height:1;margin:6px 0 8px;letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
 .lede{margin:0;color:var(--muted);max-width:60ch}
 .hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
-.cls{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
-.cls input{width:70px;background:#0b1417;border:1.5px solid var(--rivet);border-radius:8px;padding:6px 8px;font-weight:600}
 .sync{font-family:var(--f-mono);font-size:12px;color:var(--ok)}
 .sync.wait{color:var(--no)}
 .clock{font-family:var(--f-mono);font-weight:800;font-size:clamp(28px,5vw,40px);color:var(--brass);font-variant-numeric:tabular-nums;background:#0b1417;border:1.5px solid var(--rivet);border-radius:10px;padding:6px 16px;text-align:right}
@@ -123,12 +121,11 @@ tr.lead td:first-child{color:var(--brass);font-weight:600}
 <div class="page">
   <header>
     <div>
-      <div class="eyebrow">Пәнаралық квест · 5 станция · 7–9 сынып</div>
+      <div class="eyebrow">Пәнаралық квест · 5 станция</div>
       <h1>Құпия сейф</h1>
       <p class="lede">Әр станцияда екі пән біріктірілген тапсырма бар. Дұрыс жауап сейф кодының бір цифрын ашады. Бес цифрды жинап, сейфті бірінші ашқан топ жеңеді. Қате жауап +30 с, кеңес +60 с айып қосады.</p>
     </div>
     <div class="hdr-right">
-      <label class="cls" for="cls-input">Сынып <input id="cls-input" maxlength="12" placeholder="7А"></label>
       <div class="clock" aria-live="off"><small id="clock-label">Уақыт</small><span id="clock">00:00</span></div>
       <div class="sync" id="sync" hidden></div>
     </div>
@@ -203,10 +200,9 @@ const RESULTS = (()=>{ let u = null; try{ u = new URLSearchParams(location.searc
   if(u) LS.set("results-url", u); return u || LS.get("results-url") || RESULTS_URL; })();
 const QUEUE = (()=>{ try{ return JSON.parse(LS.get("results-queue") || "[]"); }catch(e){ return []; } })();
 let flushing = false;
-function clsName(){ return (document.getElementById("cls-input")?.value || "").trim(); }
 function report(ev){
   if(!RESULTS) return;
-  QUEUE.push(Object.assign({game: GAME_NAME, cls: clsName()}, ev));
+  QUEUE.push(Object.assign({game: GAME_NAME}, ev));
   LS.set("results-queue", JSON.stringify(QUEUE));
   flush();
 }
@@ -356,7 +352,6 @@ function setTeams(n){
 let armed = false;
 function start(data){
   state = (data && data.state) || fresh(4);
-  const ci = $("cls-input"); ci.value = LS.get("cls") || ""; ci.oninput = ()=>LS.set("cls", ci.value);
   flush();
   $("team-minus").onclick = ()=>setTeams(state.teams.length-1);
   $("team-plus").onclick = ()=>setTeams(state.teams.length+1);

@@ -119,6 +119,31 @@ tr.lead td:first-child{color:var(--brass);font-weight:600}
 body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
 .stage-tag{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--brass);color:var(--brass);border-radius:999px;padding:3px 12px}
 .opened .btn{margin-top:10px}
+/* ---- сейфке апаратын жол ---- */
+:root{--t1:#f2c14e;--t2:#4fc3d9;--t3:#ff7f6e;--t4:#b18cff;--t5:#8bd66b}
+.route{position:relative;background:linear-gradient(180deg,var(--steel-2),var(--steel));border:1.5px solid var(--rivet);border-radius:16px;height:230px;overflow:hidden}
+.route-title{position:absolute;left:16px;top:10px;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.route svg{position:absolute;inset:0;width:100%;height:100%}
+.route .seg{fill:none;stroke:var(--rivet);stroke-width:5;stroke-dasharray:2 10;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.route .seg.done{stroke:var(--brass);stroke-dasharray:none;stroke-width:6}
+.node{position:absolute;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:var(--f-mono);font-weight:800;font-size:17px;background:#0b1417;border:2px solid var(--rivet);color:var(--muted);cursor:pointer;padding:0}
+.node.done{background:var(--brass);border-color:var(--brass);color:var(--steel)}
+.node.now{border-color:var(--brass);color:var(--brass);animation:ring 1.6s ease-out infinite}
+.node.locked{cursor:default;opacity:.7}
+.node.safe{width:60px;height:60px;border-radius:12px;font-size:28px;border-width:2.5px}
+.node.safe.done{background:var(--brass)}
+@keyframes ring{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--brass) 60%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+.node-label{position:absolute;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap;text-align:center;pointer-events:none}
+.token{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  display:flex;align-items:center;justify-content:center;border:2px solid #0b1417;box-shadow:0 3px 8px rgba(0,0,0,.45);
+  transition:left .8s cubic-bezier(.5,0,.3,1),top .8s cubic-bezier(.5,0,.3,1),opacity .3s;z-index:2}
+.token b{transform:rotate(45deg);font-family:var(--f-mono);font-size:12px;color:#0b1417}
+.token.me{width:32px;height:32px;margin:-16px 0 0 -16px;border-color:var(--fg);z-index:3}
+.token.away{opacity:.35}
+.st.locked{background:#bdb4a0;box-shadow:none}
+.st.locked .lock-note{font-size:15px;color:#5a503c}
+@media (max-width:600px){.node-label.subj{display:none}.route{height:200px}.route-title{font-size:10px;top:8px}.node{width:36px;height:36px;font-size:14px}.node.safe{width:46px;height:46px;font-size:22px}}
 /* ---- сейф ашылу анимациясы ---- */
 .vault{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
   background:rgba(5,10,12,.82);backdrop-filter:blur(3px);
@@ -169,7 +194,7 @@ body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
     <div>
       <div class="eyebrow">Пәнаралық квест · 2 кезең · 10 станция</div>
       <h1>Құпия сейф</h1>
-      <p class="lede">Әр станцияда екі пән біріктірілген тапсырма бар. Дұрыс жауап сейф кодының бір цифрын ашады. Бес цифрды жинап, бірінші сейфті ашқан топ 2-кезеңге өтеді. Екі сейфті де ең аз уақытта ашқан топ жеңеді. Қате жауап +30 с, кеңес +60 с айып қосады.</p>
+      <p class="lede">Жол бойындағы әр станцияда екі пән біріктірілген тапсырма бар, станциялар ретімен ашылады. Дұрыс жауап сейф кодының бір цифрын ашады. Бес цифрды жинап, бірінші сейфті ашқан топ 2-кезеңге өтеді. Екі сейфті де ең аз уақытта ашқан топ жеңеді. Қате жауап +30 с, кеңес +60 с айып қосады.</p>
     </div>
     <div class="hdr-right">
       <div class="clock" aria-live="off"><small id="clock-label">Уақыт</small><span id="clock">00:00</span></div>
@@ -187,6 +212,8 @@ body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
       <button type="button" class="btn ghost" id="btn-reset" style="margin-left:8px">Жаңа ойын</button>
     </div>
   </nav>
+
+  <section class="route" id="route" aria-label="Сейфке апаратын жол"></section>
 
   <div class="main">
     <section class="safe" aria-label="Сейф">
@@ -405,6 +432,7 @@ function renderTabs(){
     const b = document.createElement("button");
     b.type="button"; b.className="tab"; b.setAttribute("role","tab");
     b.setAttribute("aria-selected", i===state.active);
+    b.style.boxShadow = `inset 4px 0 0 ${TEAM_COLORS[i % TEAM_COLORS.length]}`;
     b.innerHTML = `<span></span><span class="dots">${finished(t) ? "2/2 АШЫҚ" : (t.stage+1)+"К "+cur(t).solved.map(s=>s?"●":"○").join("")}</span>`;
     b.firstChild.textContent = t.name;
     b.onclick = ()=>{ state.active=i; render(); };
@@ -456,6 +484,12 @@ function renderStations(){
   box.innerHTML = "";
   list.forEach((s,i)=>{
     const el = document.createElement("article");
+    if(!sg.solved[i] && i > solvedIn(sg)){
+      el.className = "st locked";
+      el.innerHTML = `<div class="st-top"><span class="st-no">${t.stage+1}.${i+1} станция</span><span class="st-subj"></span></div><p class="lock-note">🔒 Бұл станция алдыңғы станцияны шешкенде ашылады.</p>`;
+      el.querySelector(".st-subj").textContent = s.subj;
+      box.appendChild(el); return;
+    }
     el.className = "st" + (sg.solved[i]?" done":"");
     el.innerHTML = `<div class="st-top"><span class="st-no">${t.stage+1}.${i+1} станция</span><span class="st-subj"></span></div>
       <p class="task"></p>
@@ -512,7 +546,67 @@ function renderClock(){
   $("clock-label").textContent = t.name + " · " + (finished(t) ? "аяқтады" : t.start ? stageLabel(t) : "басталмаған");
 }
 
-function render(){ renderTabs(); renderSafe(); renderStations(); renderLedger(); renderClock(); }
+/* ---- сейфке апаратын жол ---- */
+const TEAM_COLORS = ["var(--t1)","var(--t2)","var(--t3)","var(--t4)","var(--t5)"];
+let routeKey = "";
+function routePoints(n){
+  return Array.from({length:n+1},(_,i)=>({x: 10 + i*(80/n), y: i%2 ? 42 : 66}));
+}
+const solvedIn = sg => { let k=0; while(k<sg.solved.length && sg.solved[k]) k++; return k; };
+function renderRoute(){
+  const t = state.teams[state.active], st = t.stage, sg = cur(t), list = STAGES[st], n = list.length;
+  const pts = routePoints(n), box = $("route");
+  const key = st+"|"+state.active;
+  if(routeKey !== key){
+    routeKey = key;
+    let svg = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">`;
+    for(let i=0;i<n;i++){
+      const a=pts[i], b=pts[i+1], mx=(a.x+b.x)/2;
+      svg += `<path class="seg" data-seg="${i}" d="M${a.x} ${a.y} C${mx} ${a.y}, ${mx} ${b.y}, ${b.x} ${b.y}"/>`;
+    }
+    svg += `</svg>`;
+    let nodes = "";
+    pts.forEach((p,i)=>{
+      const isSafe = i===n;
+      nodes += `<button type="button" class="node ${isSafe?"safe":""}" data-node="${i}" style="left:${p.x}%;top:${p.y}%" aria-label="${isSafe?"Сейф":(i+1)+"-станция"}">${isSafe?"🔐":(st+1)+"."+(i+1)}</button>`;
+            nodes += `<div class="node-label ${isSafe?"":"subj"}" style="left:${p.x}%;top:calc(${p.y}% + 28px)">${isSafe?(st+1)+"-сейф":list[i].subj.replace(" + ","<br>+ ")}</div>`;
+    });
+    box.innerHTML = `<div class="route-title">${st+1}-кезең · сейфке апаратын жол</div>` + svg + nodes + `<div id="tokens"></div>`;
+    box.querySelectorAll(".node").forEach(nd=>nd.onclick = ()=>{
+      const i = +nd.dataset.node, el = document.querySelectorAll(".st")[i];
+      (i===n ? $("lock-area") : el)?.scrollIntoView({behavior:"smooth", block:"center"});
+      if(i<n) $("ans-"+i)?.focus({preventScroll:true});
+    });
+  }
+  const pos = solvedIn(sg);
+  box.querySelectorAll(".seg").forEach((p,i)=>p.classList.toggle("done", sg.solved[i]));
+  box.querySelectorAll(".node").forEach((nd,i)=>{
+    const done = i<n ? sg.solved[i] : sg.opened;
+    nd.classList.toggle("done", done);
+    nd.classList.toggle("now", !done && i===pos);
+    nd.classList.toggle("locked", !done && i>pos);
+    if(i===n) nd.textContent = sg.opened ? "🔓" : "🔐";
+  });
+  // топ белгілері
+  const tok = $("tokens");
+  while(tok.children.length > state.teams.length) tok.lastChild.remove();
+  while(tok.children.length < state.teams.length){ const d=document.createElement("div"); d.className="token"; d.innerHTML="<b></b>"; tok.appendChild(d); }
+  const at = state.teams.map(u => u.stage > st ? n : u.stage < st ? 0 : (cur(u).opened ? n : solvedIn(cur(u))));
+  const groups = {};
+  at.forEach((p,k)=>{ (groups[p] = groups[p] || []).push(k); });
+  state.teams.forEach((u,k)=>{
+    const d = tok.children[k], p = pts[at[k]], g = groups[at[k]], j = g.indexOf(k);
+    const dx = (j - (g.length-1)/2) * 26;
+    d.style.left = `calc(${p.x}% + ${dx}px)`;
+    d.style.top = `calc(${p.y}% - 40px)`;
+    d.style.background = TEAM_COLORS[k % TEAM_COLORS.length];
+    d.className = "token" + (k===state.active ? " me" : "") + (u.stage !== st ? " away" : "");
+    d.title = u.name + (u.stage !== st ? " · " + (u.stage+1) + "-кезеңде" : "");
+    d.firstChild.textContent = k+1;
+  });
+}
+
+function render(){ renderTabs(); renderRoute(); renderSafe(); renderStations(); renderLedger(); renderClock(); }
 
 function setTeams(n){
   n = Math.max(2,Math.min(5,n));

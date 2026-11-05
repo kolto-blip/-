@@ -172,6 +172,9 @@ function doGet(e) {
 </pre>
     <p class="muted">Нәтижелер кестенің «Нәтижелер» парағына түседі. Кестені тек сіз көресіз. Сілтеме арқылы жазбаларды оқуға болатындықтан, оны оқушылардан басқа адамдарға таратпаңыз.</p>
 
+    <h2>Жеңіс анимациясын тексеру</h2>
+    <p>Ойынды тест режимінде ашыңыз: жоғарғы жағында <b>«⏭ Финалға өту»</b> батырмасы шығады. Ол барлық сейфті бірден ашып, жеңіс анимациясын көрсетеді. Тест режимінде нәтижелер кестеге жіберілмейді. Аватарды сейф панеліндегі ✎ белгісімен ауыстырып, әр жануарды көруге болады.</p>
+    <div class="links" id="demo-link"></div>
     <h2>2. Оқушыларға ойын беру</h2>
     <p><b>А жолы, сілтеме арқылы (GitHub Pages).</b> Ойындар GitHub-тағы <code>docs</code> папкасынан жарияланады. Сайт мекенжайы төменде тұр, оны өзгертпеңіз. Төменде оқушыларға арналған дайын сілтемелер шығады:</p>
     <div class="row"><input type="url" id="base" placeholder="https://kolto-blip.github.io/-" aria-label="Сайт мекенжайы"></div>
@@ -256,6 +259,10 @@ $("copy-code").onclick = () => {
 function selectCode(){ const r = document.createRange(); r.selectNodeContents($("code")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
 
 // student links
+function renderDemo(){
+  const base = ($("base").value.trim() || "https://kolto-blip.github.io/-").replace(/\/+$/,"");
+  $("demo-link").innerHTML = `<label><b>Құпия сейф · тест режимі</b><input type="text" readonly value="${esc(base + "/kupiya-seif/#demo")}" onclick="this.select()"></label>`;
+}
 function renderLinks(){
   const u = $("url").value.trim(), base = $("base").value.trim().replace(/\/+$/,"");
   LS.set("base", base);
@@ -265,7 +272,7 @@ function renderLinks(){
     `<label><b>${n}</b><input type="text" readonly value="${esc(base+"/"+p+"/?r="+r)}" onclick="this.select()"></label>`).join("");
 }
 $("base").value = LS.get("base") || "https://kolto-blip.github.io/-";
-$("base").oninput = renderLinks;
+$("base").oninput = ()=>{ renderLinks(); renderDemo(); };
 
 // results
 let rows = [], timer = null;
@@ -339,7 +346,7 @@ async function testLink(){
 $("test").onclick = testLink;
 function arm(){ clearInterval(timer); if($("auto").checked) timer = setInterval(load, 15000); }
 $("auto").onchange = arm;
-renderLinks(); arm(); if($("url").value) load();
+renderLinks(); renderDemo(); arm(); if($("url").value) load();
 </script>
 </body>
 </html>

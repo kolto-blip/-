@@ -116,6 +116,7 @@ tr.lead td:first-child{color:var(--brass);font-weight:600}
 .pill{font-family:var(--f-mono);font-size:12px;border-radius:999px;padding:2px 8px;border:1px solid var(--rivet);color:var(--muted)}
 .pill.open{border-color:var(--ok);color:var(--ok)}
 .note{color:var(--muted);font-size:14px;margin:10px 0 0}
+.demo-bar{background:var(--brass);color:var(--steel);font-weight:600;border-radius:10px;padding:10px 14px}
 body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
 body[data-stage="3"]{--brass:#c4a0ff;--brass-soft:#6d4fa8}
 .stage-tag{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--brass);color:var(--brass);border-radius:999px;padding:3px 12px}
@@ -324,6 +325,7 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
       <b id="team-count">4</b>
       <button type="button" id="team-plus" aria-label="Топты қосу">+</button>
       <button type="button" class="btn ghost" id="btn-reset" style="margin-left:8px">Жаңа ойын</button>
+      <button type="button" class="btn solid" id="btn-demo" hidden>⏭ Финалға өту</button>
     </div>
   </nav>
 
@@ -498,6 +500,8 @@ const STAGES = [
 const WRONG_PEN = 30, HINT_PEN = 60;
 const $ = id => document.getElementById(id);
 const GAME_NAME = "Құпия сейф";
+// мұғалімнің тест режимі (#demo): «Финалға өту» батырмасы бар, нәтижелер кестеге жіберілмейді
+const DEMO = /(^|[#&?])demo\b/.test(location.hash + location.search);
 
 /* ---- Нәтижелерді мұғалімге жіберу ----
    RESULTS_URL ішіне Google Apps Script веб-қосымшасының сілтемесін қойыңыз
@@ -512,6 +516,7 @@ const RESULTS = (()=>{ let u = null; try{ u = new URLSearchParams(location.searc
 const QUEUE = (()=>{ try{ return JSON.parse(SS.get("results-queue") || "[]"); }catch(e){ return []; } })();
 let flushing = false;
 function report(ev){
+  if(typeof DEMO !== "undefined" && DEMO) return;
   if(!RESULTS) return;
   QUEUE.push(Object.assign({game: GAME_NAME}, ev));
   SS.set("results-queue", JSON.stringify(QUEUE));
@@ -530,7 +535,7 @@ async function flush(){
 }
 function syncStatus(){
   const el = document.getElementById("sync"); if(!el) return;
-  if(!RESULTS){ el.hidden = true; return; }
+  if(!RESULTS || (typeof DEMO !== "undefined" && DEMO)){ el.hidden = true; return; }
   el.hidden = false;
   el.textContent = QUEUE.length ? "Жіберілмеген нәтиже: " + QUEUE.length + ". Интернетті тексеріңіз." : "● Нәтижелер мұғалімге жіберіледі";
   el.classList.toggle("wait", QUEUE.length > 0);
@@ -1700,7 +1705,7 @@ function setTeams(n){
 }
 
 /* ---- онлайн режим: әр топ өз құрылғысында, басқалары кесте арқылы көрінеді ---- */
-const ONLINE = !!RESULTS;
+const ONLINE = !!RESULTS && !DEMO;
 const WINDOW_MS = 3*60*60*1000;   // соңғы 3 сағаттағы ойындар ғана ескеріледі
 let REMOTE = [], remoteSeen = {}, toastTimer = null, polling = false;
 function colorFor(name){ let h = 0; for(const c of name) h = (h*31 + c.charCodeAt(0)) >>> 0; return TEAM_COLORS[h % TEAM_COLORS.length]; }
@@ -1801,6 +1806,21 @@ function start(){
   }
   $("team-av").onclick = openAvatarPicker;
   $("av-pick-close").onclick = ()=>{ $("av-pick").hidden = true; };
+  if(DEMO){
+    $("btn-demo").hidden = false;
+    const bar = document.createElement("div"); bar.className = "demo-bar";
+    bar.textContent = "Тест режимі: «⏭ Финалға өту» батырмасы барлық сейфті бірден ашады. Нәтижелер кестеге жіберілмейді.";
+    document.querySelector(".page").prepend(bar);
+  }
+  $("btn-demo").onclick = ()=>{
+    const t = state.teams[state.active], now = Date.now();
+    t.stages.forEach(sg=>{ sg.solved = sg.solved.map(()=>true); sg.opened = true; sg.lockMsg = ""; });
+    t.stage = STAGES.length - 1;
+    if(!t.start) t.start = now - (8*60 + Math.floor(Math.random()*240))*1000;
+    t.end = now;
+    render();
+    playVault(cur(t).code, true, fmt(elapsed(t)), ()=>showWin(t, false), t.stage);
+  };
   $("team-minus").onclick = ()=>setTeams(state.teams.length-1);
   $("team-plus").onclick = ()=>setTeams(state.teams.length+1);
   $("btn-reset").onclick = ()=>{

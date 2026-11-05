@@ -120,6 +120,45 @@ body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
 body[data-stage="3"]{--brass:#c4a0ff;--brass-soft:#6d4fa8}
 .stage-tag{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--brass);color:var(--brass);border-radius:999px;padding:3px 12px}
 .opened .btn{margin-top:10px}
+/* ---- жеңіс анимациясы ---- */
+.win{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--medal) 30%,#0b1417),#05090b 75%);
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.win canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.win-rays{position:absolute;left:50%;top:38%;width:160vmax;height:160vmax;margin:-80vmax 0 0 -80vmax;opacity:0;
+  background:repeating-conic-gradient(color-mix(in srgb,var(--medal) 26%,transparent) 0 7deg,transparent 7deg 18deg);
+  animation:raysin 1s .4s forwards,rays 30s linear infinite}
+@keyframes raysin{to{opacity:1}}
+.win-card{position:relative;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;max-width:480px;width:100%;max-height:100%;overflow:auto;padding:40px 10px 16px}
+.medal{position:relative;width:150px;height:150px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%,#fff 0 6%,var(--medal-hi) 22%,var(--medal) 55%,var(--medal-lo) 100%);
+  box-shadow:0 0 0 8px color-mix(in srgb,var(--medal-lo) 70%,transparent),0 20px 60px rgba(0,0,0,.55),0 0 80px color-mix(in srgb,var(--medal) 55%,transparent);
+  animation:drop .9s cubic-bezier(.3,1.6,.5,1) both;overflow:hidden}
+.medal span{font-family:var(--f-display);font-weight:700;font-size:64px;color:#1b1406;text-shadow:0 2px 0 rgba(255,255,255,.45)}
+.medal i{position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.7) 50%,transparent 65%);transform:translateX(-120%);animation:shine 2.6s 1s ease-in-out infinite}
+.win-emoji{font-size:56px;line-height:1;margin-top:-34px;position:relative;animation:pop2 .6s .7s cubic-bezier(.3,1.8,.5,1) both;filter:drop-shadow(0 6px 12px rgba(0,0,0,.5))}
+@keyframes drop{0%{transform:translateY(-120vh) rotate(-30deg)}100%{transform:none}}
+@keyframes shine{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
+@keyframes pop2{0%{transform:scale(0)}100%{transform:scale(1)}}
+.win-place{font-family:var(--f-display);font-weight:700;text-transform:uppercase;font-size:clamp(40px,11vw,68px);line-height:1;color:var(--medal-hi);
+  text-shadow:0 4px 0 var(--medal-lo),0 10px 30px rgba(0,0,0,.6);animation:pop2 .6s .9s cubic-bezier(.3,1.8,.5,1) both}
+.win-team{font-family:var(--f-display);font-size:24px;color:var(--fg);animation:fadeup .5s 1.2s both}
+.win-text{margin:0;color:var(--fg);opacity:.9;animation:fadeup .5s 1.35s both}
+.win-stats{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;animation:fadeup .5s 1.5s both}
+.win-stats span{background:rgba(0,0,0,.35);border:1px solid color-mix(in srgb,var(--medal) 50%,transparent);border-radius:999px;padding:4px 12px;font-family:var(--f-mono);font-size:13px}
+.win-rank{list-style:none;margin:4px 0 0;padding:0;width:100%;display:flex;flex-direction:column;gap:6px;animation:fadeup .5s 1.7s both}
+.win-rank li{display:flex;justify-content:space-between;gap:10px;background:rgba(0,0,0,.35);border-radius:8px;padding:6px 12px;font-size:15px}
+.win-rank li.me{outline:2px solid var(--medal);font-weight:600}
+.win-rank b{font-family:var(--f-mono)}
+.win .btn{animation:fadeup .5s 1.9s both;border-color:var(--medal);color:var(--medal)}
+.win .btn:hover{background:var(--medal);color:#1b1406}
+@keyframes fadeup{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:none}}
+.win[data-place="1"]{--medal:#f4c542;--medal-hi:#ffe38a;--medal-lo:#a8761c}
+.win[data-place="2"]{--medal:#c9d3da;--medal-hi:#f4f8fb;--medal-lo:#7c8a94}
+.win[data-place="3"]{--medal:#d08a4e;--medal-hi:#f2b98a;--medal-lo:#7d4a22}
+.win[data-place="n"]{--medal:#7fb6ff;--medal-hi:#cfe4ff;--medal-lo:#3d5f9a}
+.win:not([data-place="1"]) .win-rays{display:none}
+@media (prefers-reduced-motion:reduce){.win *{animation:none!important}}
 /* ---- онлайн режим: басқа топтар ---- */
 .join{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(5,10,12,.85);
   padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
@@ -278,6 +317,20 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
     </form>
   </div>
   <div class="toast" id="toast" hidden aria-live="polite"></div>
+  <div class="win" id="win" hidden role="dialog" aria-modal="true" aria-labelledby="win-place">
+    <canvas id="win-canvas" aria-hidden="true"></canvas>
+    <div class="win-rays" aria-hidden="true"></div>
+    <div class="win-card">
+      <div class="medal" aria-hidden="true"><span id="win-num">1</span><i></i></div>
+      <div class="win-emoji" id="win-emoji" aria-hidden="true">🏆</div>
+      <div class="win-place" id="win-place">1-орын!</div>
+      <div class="win-team" id="win-team"></div>
+      <p class="win-text" id="win-text"></p>
+      <div class="win-stats" id="win-stats"></div>
+      <ol class="win-rank" id="win-rank"></ol>
+      <button class="btn" id="win-close" type="button">Жабу</button>
+    </div>
+  </div>
 
   <section class="route" id="route" aria-label="Сейфке апаратын жол"></section>
 
@@ -504,7 +557,7 @@ function playVault(code, final, timeText, onDone, stageIdx){
   $("vault-loot").textContent = final ? "🏆" : "✉️";
   $("vault-title").textContent = final ? "Барлық сейф ашылды!" : (stageIdx+1) + "-сейф ашылды!";
   $("vault-text").textContent = final ? "Жалпы нәтиже: " + timeText : "Ішінде " + (stageIdx+2) + "-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.";
-  $("vault-btn").textContent = final ? "Жабу" : (stageIdx+2) + "-кезеңге өту";
+  $("vault-btn").textContent = final ? "Нәтижені көру" : (stageIdx+2) + "-кезеңге өту";
   $("vault-btn").onclick = ()=>{ vaultTimers.forEach(clearTimeout); v.hidden = true; onDone && onDone(); };
   digits.innerHTML = code.map(()=>"<span>?</span>").join("");
   const spans = [...digits.children];
@@ -531,6 +584,73 @@ function playVault(code, final, timeText, onDone, stageIdx){
   later(t1+2600, ()=>$("vault-btn").focus());
 }
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("vault").hidden && $("vault").classList.contains("open")) $("vault-btn").click(); });
+
+/* ---- жеңіс анимациясы: орынға қарай ---- */
+let winRAF = null;
+function standings(){
+  const list = state.teams.filter(finished).map(u=>({name:u.name, s:elapsed(u), me:false, local:true, ref:u}))
+    .concat((typeof REMOTE!=="undefined" ? REMOTE : []).filter(r=>r.opened>=STAGES.length).map(r=>({name:r.name, s:r.el, me:false, local:false})));
+  return list.sort((a,b)=>a.s-b.s);
+}
+function confetti(place){
+  const cv = $("win-canvas"), ctx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio||1);
+  const W = cv.width = innerWidth*dpr, H = cv.height = innerHeight*dpr;
+  const pal = {1:["#f7d154","#f2a93b","#fff2b0","#e0b84a","#ffffff"], 2:["#e6edf2","#b8c4cc","#ffffff","#8fa1ad"], 3:["#e09a5e","#b8733f","#f2c49b","#8c5a32"], n:["#9fd3ff","#c4a0ff","#8bd66b","#ffd36e","#ff8f7e"]}[place];
+  const count = {1:220, 2:140, 3:110, n:80}[place];
+  const parts = [];
+  const add = (x,y,vx,vy)=>parts.push({x,y,vx,vy,r:(4+Math.random()*6)*dpr,c:pal[Math.floor(Math.random()*pal.length)],a:Math.random()*6.28,va:(Math.random()-.5)*.3,sh:Math.random()<.3?"c":"r"});
+  for(let k=0;k<count;k++) add(Math.random()*W, -Math.random()*H*.6, (Math.random()-.5)*2*dpr, (2+Math.random()*3)*dpr);
+  const burst = side=>{ for(let k=0;k<70;k++){ const ang = (side<0 ? -Math.PI/3 : -2*Math.PI/3) + (Math.random()-.5)*.6, sp = (10+Math.random()*9)*dpr;
+    add(side<0 ? 0 : W, H*.85, Math.cos(ang)*sp, Math.sin(ang)*sp); } };
+  if(place===1 || place===2){ setTimeout(()=>burst(-1), 500); setTimeout(()=>burst(1), 800); }
+  if(place===1){ setTimeout(()=>burst(-1), 1700); setTimeout(()=>burst(1), 2000); }
+  const t0 = performance.now();
+  cancelAnimationFrame(winRAF);
+  const step = now=>{
+    ctx.clearRect(0,0,W,H);
+    for(const p of parts){
+      p.vy += .12*dpr; p.vx *= .99; p.vy = Math.min(p.vy, 6*dpr); p.x += p.vx + Math.sin((now/400)+p.a)*.6*dpr; p.y += p.vy; p.a += p.va;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle = p.c;
+      if(p.sh==="c"){ ctx.beginPath(); ctx.arc(0,0,p.r*.5,0,6.28); ctx.fill(); } else ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);
+      ctx.restore();
+    }
+    if(now - t0 < (place===1 ? 9000 : 6000) && !$("win").hidden) winRAF = requestAnimationFrame(step); else ctx.clearRect(0,0,W,H);
+  };
+  winRAF = requestAnimationFrame(step);
+}
+function winSound(place){
+  const seq = {1:[523,659,784,1047,784,1047,1319], 2:[523,659,784,988], 3:[440,554,659,880], n:[392,523,659]}[place];
+  seq.forEach((f,i)=>setTimeout(()=>tone(f, i===seq.length-1 ? .6 : .22, "triangle", .08), i*(place===1?140:170)));
+}
+async function showWin(t, fresh){
+  if(typeof pollRemote === "function" && ONLINE){ try{ await Promise.race([pollRemote(), new Promise(r=>setTimeout(r,2500))]); }catch(e){} }
+  const list = standings();
+  let idx = list.findIndex(x=>x.local && x.ref===t);
+  if(idx < 0){ list.push({name:t.name, s:elapsed(t), local:true, ref:t}); list.sort((a,b)=>a.s-b.s); idx = list.findIndex(x=>x.ref===t); }
+  list[idx].me = true;
+  const place = idx + 1, key = place<=3 ? String(place) : "n";
+  const w = $("win"); w.dataset.place = key;
+  $("win-num").textContent = place;
+  $("win-emoji").textContent = {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key];
+  $("win-place").textContent = place + "-орын!";
+  $("win-team").textContent = t.name;
+  $("win-text").textContent = {
+    1:"Жеңімпаз! Барлық сейфті ең жылдам аштыңыз.",
+    2:"Керемет нәтиже! Жеңіске бір қадам ғана қалды.",
+    3:"Жарайсыңдар! Жүлделі үштікке кірдіңіздер.",
+    n:"Барлық сейфті аштыңыз! Бұл да үлкен жетістік."}[key];
+  $("win-stats").innerHTML = `<span>⏱ ${fmt(elapsed(t))}</span><span>✗ қате: ${t.wrong}</span><span>💡 кеңес: ${hintCount(t)}</span>`;
+  const rank = $("win-rank"); rank.innerHTML = "";
+  list.slice(0, 5).forEach((x,k)=>{ const li = document.createElement("li"); if(x.me) li.className = "me";
+    li.innerHTML = `<span></span><b>${fmt(x.s)}</b>`; li.firstChild.textContent = (k+1) + ". " + x.name + (x.me ? " (сіз)" : ""); rank.appendChild(li); });
+  rank.hidden = list.length < 2;
+  w.hidden = false;
+  $("win-close").onclick = ()=>{ w.hidden = true; cancelAnimationFrame(winRAF); };
+  setTimeout(()=>$("win-close").focus(), 1900);
+  if(!matchMedia("(prefers-reduced-motion: reduce)").matches) confetti(place<=3 ? place : "n");
+  winSound(key==="n" ? "n" : place);
+  if(fresh) report({team:t.name, event:"Қорытынды", task:"Барлық сейф", answer:"", result:place+"-орын", points:fmt(elapsed(t)), total:STAGES.length+"/"+STAGES.length+" сейф"});
+}
 
 function renderTabs(){
   $("team-count").textContent = state.teams.length;
@@ -559,7 +679,8 @@ function renderSafe(){
     la.innerHTML = `<div class="opened"><b>${t.stage+1}-сейф ашылды!</b>Ішінде ${t.stage+2}-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.<br><button class="btn solid" id="next-stage" type="button">${t.stage+2}-кезеңге өту</button></div>`;
     $("next-stage").onclick = ()=>{ t.stage++; report({team:t.name, event:"Кезең", task:(t.stage+1)+"-кезең басталды", answer:"", result:"", points:fmt(elapsed(t)), total:openedCount(t)+"/"+STAGES.length+" сейф"}); render(); };
   } else if(sg.opened){
-    la.innerHTML = `<div class="opened"><b>Барлық сейф ашылды!</b>Жалпы нәтиже: ${fmt(elapsed(t))}</div>`;
+    la.innerHTML = `<div class="opened"><b>Барлық сейф ашылды!</b>Жалпы нәтиже: ${fmt(elapsed(t))}<br><button class="btn solid" id="show-win" type="button">Орынды көру</button></div>`;
+    $("show-win").onclick = ()=>showWin(t, false);
   } else {
     la.innerHTML = `<div class="lock"><input id="lock-input" inputmode="numeric" maxlength="5" placeholder="•••••" aria-label="Сейф коды" ${all?"":"disabled"}><button class="btn solid" id="lock-btn" type="button" ${all?"":"disabled"}>Ашу</button></div>
       <div class="lock-msg ${sg.lockMsg.startsWith("Қате")?"no":""}" id="lock-msg">${sg.lockMsg || (all ? "Барлық цифр жиналды. Кодты станция ретімен енгізіңіз." : "Сейфті ашу үшін осы кезеңнің 5 станциясын шешіңіз.")}</div>`;
@@ -571,7 +692,7 @@ function renderSafe(){
           if(last) t.end = Date.now();
           report({team:t.name, event:"Сейф", task:stageLabel(t)+" · Код", answer:inp.value, result:"ашылды", points:fmt(elapsed(t)), total:openedCount(t)+"/"+STAGES.length+" сейф"});
           render();
-          playVault(sg.code, last, fmt(elapsed(t)), last ? null : ()=>$("next-stage")?.click(), t.stage);
+          playVault(sg.code, last, fmt(elapsed(t)), last ? ()=>showWin(t, true) : ()=>$("next-stage")?.click(), t.stage);
         } else {
           t.wrong++;
           report({team:t.name, event:"Сейф", task:stageLabel(t)+" · Код", answer:inp.value, result:"қате код", points:fmt(elapsed(t)), total:openedCount(t)+"/"+STAGES.length+" сейф"});

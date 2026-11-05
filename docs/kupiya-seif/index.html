@@ -1091,9 +1091,9 @@ function makeRig(spec){
     // бес мойын мен бас
     rig.necks = [];
     for(let k=0;k<5;k++){
-      const a = (k-2)*.42, neck = new THREE.Group(); neck.position.set(0, by+.3, .35); neck.rotation.set(-.5 + Math.abs(k-2)*.08, 0, -a); yaw.add(neck);
-      for(let i=0;i<5;i++) part(neck, SPH, "#3c9a4a", [0, i*.13, i*.02], [.1,.1,.1], {ow:1.08});
-      const hg = new THREE.Group(); hg.position.set(0,.72,.08); hg.rotation.set(.5 - Math.abs(k-2)*.08, 0, a); neck.add(hg);
+      const a = (k-2)*.5, neck = new THREE.Group(); neck.position.set(0, by+.3, .35); neck.rotation.set(-.5 + Math.abs(k-2)*.08, 0, -a); yaw.add(neck);
+      for(let i=0;i<7;i++) part(neck, SPH, "#3c9a4a", [0, i*.15, i*.02], [.11,.11,.11], {ow:1.08});
+      const hg = new THREE.Group(); hg.position.set(0,1.08,.12); hg.rotation.set(.5 - Math.abs(k-2)*.08, 0, a); hg.scale.setScalar(1.45); neck.add(hg);
       part(hg, SPH, "#3c9a4a", [0,0,0], [.17,.15,.18]);
       part(hg, SPH, "#3c9a4a", [0,-.04,.16], [.11,.08,.14]);
       [-1,1].forEach(sd=>part(hg, CONE, "#f2d48a", [sd*.09,.15,-.05], [.03,.12,.03], {rot:[-.4,0,-sd*.3]}));
@@ -1171,11 +1171,11 @@ function scene3d(avatar, place, teamColor, still, dragon){
   const gold = cssVar(win,"--medal") || "#f4c542", hi = cssVar(win,"--medal-hi") || "#ffe38a", lo = cssVar(win,"--medal-lo") || "#a8761c";
   const scene = new THREE.Scene(); r3.scene = scene;
   const cam = new THREE.PerspectiveCamera(32, W/H, .1, 100);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x223344, .8));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(3,8,6); sun.castShadow = true;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, .42));
+  const sun = new THREE.DirectionalLight(0xffffff, .85); sun.position.set(3,8,6); sun.castShadow = true;
   sun.shadow.mapSize.set(1024,1024); Object.assign(sun.shadow.camera, {left:-5,right:4,top:5,bottom:-3,near:1,far:25});
   scene.add(sun);
-  const rim = new THREE.DirectionalLight(C(hi), .7); rim.position.set(-5,4,-4); scene.add(rim);
+  const rim = new THREE.DirectionalLight(C(hi), .35); rim.position.set(-5,4,-4); scene.add(rim);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(6,48), new THREE.ShadowMaterial({opacity:.35}));
   floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
   const mat = (c, m=0, r=.6, extra={})=>new THREE.MeshStandardMaterial(Object.assign({color:C(c), metalness:m, roughness:r}, extra));
@@ -1202,7 +1202,7 @@ function scene3d(avatar, place, teamColor, still, dragon){
   const reward = new THREE.Group(); reward.visible = false; scene.add(reward);
   if(place===1){
     const pts = [[0,0],[.26,0],[.26,.06],[.08,.1],[.06,.3],[.1,.36],[.3,.5],[.34,.8],[.31,.82],[.27,.56],[0,.44]].map(([x,y])=>new THREE.Vector2(x,y));
-    const gm = mat("#f4c542", .95, .2, {emissive:C("#4a3300"), side:THREE.DoubleSide});
+    const gm = mat("#ffd24a", .55, .25, {emissive:C("#8a6400"), emissiveIntensity:.9, side:THREE.DoubleSide});
     add(reward, new THREE.LatheGeometry(pts, 48), gm);
     [-1,1].forEach(sd=>{ const hdl = add(reward, new THREE.TorusGeometry(.14,.032,10,28,Math.PI), gm, sd*.32,.62,0); hdl.rotation.z = sd>0 ? -Math.PI/2 : Math.PI/2; });
     add(reward, new THREE.BoxGeometry(.46,.12,.46), mat("#5a3d12", .2, .5), 0,-.05,0);

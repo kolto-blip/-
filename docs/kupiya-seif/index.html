@@ -936,6 +936,220 @@ function disposeScene(sc){
     if(o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); });
   });
 }
+/* ---- мультфильм стиліндегі 3D жануарлар (three.js примитивтерінен) ---- */
+let TOON = null;
+function toonKit(){
+  if(TOON) return TOON;
+  const data = new Uint8Array([110,110,110,255, 190,190,190,255, 255,255,255,255]);
+  const grad = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat);
+  grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.generateMipmaps = false; grad.needsUpdate = true;
+  TOON = {grad, outline: new THREE.MeshBasicMaterial({color:0x1b1d26, side:THREE.BackSide})};
+  return TOON;
+}
+function spotsTexture(base, spot, ring){
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const x = c.getContext("2d"); x.fillStyle = base; x.fillRect(0,0,256,256);
+  let seed = 7; const rnd = ()=>((seed = (seed*9301 + 49297) % 233280)/233280);
+  for(let i=0;i<46;i++){ const px = rnd()*256, py = rnd()*256, r = 5 + rnd()*7;
+    if(ring){ x.strokeStyle = spot; x.lineWidth = 4; x.beginPath(); x.arc(px,py,r,0,7); x.stroke(); }
+    else { x.fillStyle = spot; x.beginPath(); x.ellipse(px,py,r,r*.8,rnd()*3,0,7); x.fill(); } }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+function shellTexture(){
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const x = c.getContext("2d"); x.fillStyle = "#4f8a3a"; x.fillRect(0,0,256,256);
+  x.strokeStyle = "#2f5a22"; x.lineWidth = 7;
+  for(let r=0;r<5;r++) for(let q=0;q<6;q++){ const cx = q*48 + (r%2)*24, cy = r*56;
+    x.beginPath(); for(let k=0;k<6;k++){ const a = k*Math.PI/3; x.lineTo(cx + Math.cos(a)*26, cy + Math.sin(a)*26); } x.closePath(); x.stroke(); }
+  return new THREE.CanvasTexture(c);
+}
+function makeRig(spec){
+  const K = toonKit();
+  const root = new THREE.Group(), yaw = new THREE.Group(); root.add(yaw);
+  const matCache = {};
+  const tm = (color, map)=>{ const key = color + (map ? map.uuid : ""); return matCache[key] || (matCache[key] = new THREE.MeshToonMaterial({color:new THREE.Color(color), gradientMap:K.grad, map:map || null})); };
+  const SPH = new THREE.SphereGeometry(1, 28, 20), CYL = new THREE.CylinderGeometry(1, 1, 1, 18), CONE = new THREE.ConeGeometry(1, 1, 18);
+  // бөлшек: дене + контур
+  const part = (parent, geo, color, pos=[0,0,0], scl=[1,1,1], o={})=>{
+    const m = new THREE.Mesh(geo, o.basic ? new THREE.MeshBasicMaterial({color:new THREE.Color(color)}) : tm(color, o.map));
+    m.position.set(...pos); m.scale.set(...scl); if(o.rot) m.rotation.set(...o.rot);
+    m.castShadow = !o.noShadow; parent.add(m);
+    if(o.outline !== false){ const ol = new THREE.Mesh(geo, K.outline); ol.scale.setScalar(o.ow || 1.06); m.add(ol); }
+    return m;
+  };
+  const eye = (parent, x, y, z, r, iris, turn)=>{
+    const g = new THREE.Group(); g.position.set(x,y,z); g.rotation.y = turn; parent.add(g);
+    part(g, SPH, "#ffffff", [0,0,0], [r,r*1.08,r*.9], {ow:1.1});
+    part(g, SPH, iris, [0,0,r*.6], [r*.6,r*.66,r*.35], {outline:false});
+    part(g, SPH, "#14141a", [0,0,r*.78], [r*.34,r*.38,r*.25], {outline:false});
+    part(g, SPH, "#ffffff", [r*.22,r*.28,r*.92], [r*.14,r*.14,r*.1], {outline:false, basic:true});
+    return g;
+  };
+  const rig = {root, yaw, legs:[], wings:[], tail:null, head:null, eyes:[], jaw:null, extra:{}, kind:spec.kind, mouths:[]};
+  const S = spec;
+  if(S.type === "quad"){
+    const [bw,bh,bl] = S.body, L = S.legLen, by = L + bh*.42;
+    const bodyMap = S.spots ? spotsTexture(S.color, S.spots, S.ring) : null;
+    const body = part(yaw, SPH, S.color, [0,by,0], [bw,bh,bl], {map:bodyMap});
+    if(S.belly) part(yaw, SPH, S.belly, [0,by-bh*.32,bl*.12], [bw*.78,bh*.62,bl*.72], {outline:false});
+    if(S.hump) S.hump.forEach(z=>part(yaw, SPH, S.color, [0,by+bh*.78,z*bl], [bw*.55,bh*.55,bl*.32]));
+    // аяқтар
+    [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(([sx,sz], i)=>{
+      const g = new THREE.Group(); g.position.set(sx*bw*.55, L+.05, sz*bl*.58); yaw.add(g);
+      part(g, CYL, S.legColor || S.color, [0,-L/2,0], [S.legR, L, S.legR], {map: S.spots && !S.legColor ? bodyMap : null});
+      part(g, SPH, S.paw || S.legColor || S.color, [0,-L+.02,.04], [S.legR*1.35, S.legR*.9, S.legR*1.6]);
+      g.userData.phase = (i===0 || i===3) ? 0 : Math.PI; rig.legs.push(g);
+    });
+    // мойын мен бас
+    const H = S.head, neck = S.neck || 0;
+    const hg = new THREE.Group(); hg.position.set(0, by + bh*.5 + neck*.7, bl*.82 + neck*.35); yaw.add(hg); rig.head = hg;
+    if(neck) part(yaw, CYL, S.color, [0, by + bh*.35 + neck*.3, bl*.7 + neck*.15], [bw*.32, neck*1.3, bw*.32], {rot:[.55,0,0]});
+    if(S.maneNeck) for(let i=0;i<6;i++) part(yaw, SPH, S.maneNeck, [0, by + bh*.55 + i*neck*.17, bl*.55 + i*neck*.1], [.09,.14,.14]);
+    part(hg, SPH, H.color || S.color, [0,0,0], [H.r, H.r*.95, H.r], {map: S.spots ? bodyMap : null});
+    if(H.snout) part(hg, SPH, H.snout[3], [0,-H.r*.25,H.r*.75], [H.snout[0],H.snout[1],H.snout[2]]);
+    const noseZ = H.r*.75 + (H.snout ? H.snout[2]*.92 : H.r*.2);
+    part(hg, SPH, "#1a1a22", [0,-H.r*.12, noseZ], [H.r*.18,H.r*.13,H.r*.12], {outline:false});
+    rig.mouths.push(new THREE.Vector3(0, -H.r*.38, noseZ));
+    const jaw = part(hg, SPH, "#5a1a20", [0,-H.r*.48, noseZ - H.r*.2], [H.r*.28, H.r*.02, H.r*.18], {outline:false}); rig.jaw = jaw;
+    const er = H.eye || H.r*.3;
+    rig.eyes.push(eye(hg, -H.r*.42, H.r*.22, H.r*.72, er, S.iris, -.32), eye(hg, H.r*.42, H.r*.22, H.r*.72, er, S.iris, .32));
+    // құлақтар
+    [-1,1].forEach(sd=>{
+      if(S.ears === "round"){ part(hg, SPH, S.earColor || S.color, [sd*H.r*.68, H.r*.78, -H.r*.1], [H.r*.32, H.r*.32, H.r*.14]); }
+      else if(S.ears === "pointy"){ const e = part(hg, CONE, S.earColor || S.color, [sd*H.r*.52, H.r*.95, -H.r*.05], [H.r*.26, H.r*.62, H.r*.14], {rot:[0,0,-sd*.32]});
+        if(S.earTip) part(e, CONE, S.earTip, [0,.32,0], [.55,.4,.6], {outline:false}); }
+      else if(S.ears === "long"){ part(hg, SPH, S.earColor || S.color, [sd*H.r*.85, H.r*.45, -H.r*.1], [H.r*.42, H.r*.16, H.r*.2], {rot:[0,0,-sd*.4]}); }
+      else if(S.ears === "horse"){ part(hg, CONE, S.color, [sd*H.r*.38, H.r*.95, -H.r*.25], [H.r*.18, H.r*.5, H.r*.12], {rot:[-.2,0,-sd*.15]}); }
+    });
+    if(S.mane){ for(let i=0;i<14;i++){ const a = i/14*Math.PI*2; part(hg, SPH, S.mane, [Math.cos(a)*H.r*1.02, Math.sin(a)*H.r*1.0 + H.r*.05, -H.r*.25], [H.r*.42,H.r*.42,H.r*.36]); } }
+    if(S.antlers){ [-1,1].forEach(sd=>{ const a = part(hg, CYL, "#7a5230", [sd*H.r*.4, H.r*1.25, -H.r*.2], [.035,.55,.035], {rot:[0,0,-sd*.35]});
+      [.1,.25].forEach((h,k)=>part(hg, CYL, "#7a5230", [sd*H.r*(.55+k*.18), H.r*(1.25+h+.15), -H.r*.2], [.03,.3,.03], {rot:[0,0,sd*.6]})); }); }
+    // құйрық
+    const tg = new THREE.Group(); tg.position.set(0, by + bh*.25, -bl*.95); yaw.add(tg); rig.tail = tg;
+    if(S.tail === "bushy"){ part(tg, SPH, S.tailColor || S.color, [0,.15,-.38], [.2,.22,.46], {rot:[-.6,0,0]}); if(S.tip) part(tg, SPH, S.tip, [0,.38,-.72], [.14,.15,.18]); }
+    else if(S.tail === "thin" || S.tail === "long"){ const n = S.tail === "long" ? 6 : 4;
+      for(let i=0;i<n;i++) part(tg, SPH, S.tailColor || S.color, [0, i*.06, -i*.13], [.06,.06,.08], {map: S.spots ? bodyMap : null});
+      if(S.tip) part(tg, SPH, S.tip, [0, n*.06, -n*.13], [.11,.13,.13]); }
+    else if(S.tail === "horse"){ part(tg, CONE, S.tailColor, [0,-.25,-.18], [.14,.6,.14], {rot:[.5,0,0]}); }
+    else part(tg, SPH, S.tailColor || S.color, [0,0,-.05], [.12,.12,.12]);
+  }
+  else if(S.type === "bird"){
+    const by = .62;
+    part(yaw, SPH, S.color, [0,by,0], [.46,.6,.44]);
+    part(yaw, SPH, S.belly, [0,by-.06,.22], [.34,.46,.25], {outline:false, map: S.bellyMap ? spotsTexture(S.belly, S.bellyMap, true) : null});
+    const hg = new THREE.Group(); hg.position.set(0, by + (S.owl ? .38 : .62), S.owl ? .08 : .12); yaw.add(hg); rig.head = hg;
+    part(hg, SPH, S.headColor || S.color, [0,0,0], S.owl ? [.44,.38,.38] : [.3,.3,.3]);
+    if(S.owl){ part(hg, SPH, S.belly, [-.17,0,.26], [.18,.18,.08], {outline:false}); part(hg, SPH, S.belly, [.17,0,.26], [.18,.18,.08], {outline:false});
+      [-1,1].forEach(sd=>part(hg, CONE, S.color, [sd*.3,.38,-.02], [.08,.22,.06], {rot:[0,0,-sd*.4]})); }
+    const er = S.owl ? .14 : .1;
+    rig.eyes.push(eye(hg, -(S.owl?.17:.14), S.owl?.02:.07, S.owl?.28:.22, er, S.iris, -.25), eye(hg, (S.owl?.17:.14), S.owl?.02:.07, S.owl?.28:.22, er, S.iris, .25));
+    part(hg, CONE, "#f2b630", [0, S.owl ? -.1 : -.04, S.owl ? .36 : .32], [.06, S.owl ? .14 : .22, .06], {rot:[Math.PI/2 + (S.owl ? .6 : .35),0,0]});
+    rig.mouths.push(new THREE.Vector3(0, -.05, .42));
+    [-1,1].forEach(sd=>{ const g = new THREE.Group(); g.position.set(sd*.4, by+.18, -.02); yaw.add(g);
+      part(g, SPH, S.wing || S.color, [sd*.38,-.05,0], [.42,.1,.26], {rot:[0,0,-sd*.25]}); g.userData.side = sd; rig.wings.push(g); });
+    part(yaw, CONE, S.tailColor || S.color, [0,by-.25,-.42], [.18,.36,.06], {rot:[-1.9,0,0]});
+    [-1,1].forEach(sd=>part(yaw, CYL, "#f2b630", [sd*.15,.12,.05], [.04,.24,.04]));
+  }
+  else if(S.type === "turtle"){
+    part(yaw, SPH, "#4f8a3a", [0,.45,0], [.6,.42,.72], {map:shellTexture()});
+    part(yaw, CYL, "#d9c27a", [0,.22,0], [.58,.08,.7], {outline:false});
+    const hg = new THREE.Group(); hg.position.set(0,.45,.78); yaw.add(hg); rig.head = hg;
+    part(yaw, CYL, "#9ccf6a", [0,.38,.6], [.13,.3,.13], {rot:[1.2,0,0]});
+    part(hg, SPH, "#9ccf6a", [0,0,0], [.24,.22,.26]);
+    rig.eyes.push(eye(hg, -.12, .08, .17, .085, "#3a2a1a", -.3), eye(hg, .12, .08, .17, .085, "#3a2a1a", .3));
+    rig.mouths.push(new THREE.Vector3(0,-.06,.26));
+    [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(([sx,sz], i)=>{ const g = new THREE.Group(); g.position.set(sx*.45,.25,sz*.45); yaw.add(g);
+      part(g, SPH, "#9ccf6a", [0,-.1,0], [.14,.16,.18]); g.userData.phase = (i===0||i===3) ? 0 : Math.PI; rig.legs.push(g); });
+    const tg = new THREE.Group(); tg.position.set(0,.3,-.7); yaw.add(tg); rig.tail = tg; part(tg, CONE, "#9ccf6a", [0,0,-.06], [.06,.16,.06], {rot:[-1.6,0,0]});
+  }
+  else if(S.type === "dolphin"){
+    part(yaw, SPH, "#5aa9e6", [0,.55,0], [.36,.38,.95]);
+    part(yaw, SPH, "#e7f4ff", [0,.42,.12], [.27,.24,.75], {outline:false});
+    const hg = new THREE.Group(); hg.position.set(0,.6,.82); yaw.add(hg); rig.head = hg;
+    part(hg, SPH, "#5aa9e6", [0,-.06,.18], [.12,.1,.26]);
+    rig.eyes.push(eye(hg, -.2, .06, -.02, .085, "#2a2a3a", -.7), eye(hg, .2, .06, -.02, .085, "#2a2a3a", .7));
+    rig.mouths.push(new THREE.Vector3(0,-.1,.4));
+    part(yaw, CONE, "#4a92cc", [0,.98,-.1], [.08,.34,.2], {rot:[-.4,0,0]});
+    [-1,1].forEach(sd=>part(yaw, SPH, "#4a92cc", [sd*.35,.4,.3], [.2,.04,.12], {rot:[0,sd*.5,-sd*.4]}));
+    const tg = new THREE.Group(); tg.position.set(0,.6,-.92); yaw.add(tg); rig.tail = tg;
+    [-1,1].forEach(sd=>part(tg, SPH, "#4a92cc", [sd*.18,0,-.12], [.22,.04,.12], {rot:[0,-sd*.5,0]}));
+  }
+  else if(S.type === "hydra"){
+    const by = .75;
+    part(yaw, SPH, "#3c9a4a", [0,by,0], [.55,.5,.7]);
+    part(yaw, SPH, "#b7df7a", [0,by-.12,.3], [.38,.36,.4], {outline:false});
+    [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(([sx,sz], i)=>{ const g = new THREE.Group(); g.position.set(sx*.32,.45,sz*.35); yaw.add(g);
+      part(g, CYL, "#2e7a3a", [0,-.2,0], [.11,.42,.11]); part(g, SPH, "#2e7a3a", [0,-.42,.06], [.14,.08,.18]);
+      g.userData.phase = (i===0||i===3) ? 0 : Math.PI; rig.legs.push(g); });
+    [-1,1].forEach(sd=>{ const g = new THREE.Group(); g.position.set(sd*.35, by+.3, -.15); yaw.add(g);
+      const sh = new THREE.Shape(); sh.moveTo(0,0); sh.lineTo(sd*.9,.55); sh.lineTo(sd*.75,.1); sh.lineTo(sd*.95,-.15); sh.lineTo(sd*.5,-.2); sh.closePath();
+      const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshToonMaterial({color:new THREE.Color("#2e7a3a"), gradientMap:K.grad, side:THREE.DoubleSide}));
+      m.castShadow = true; g.add(m); g.userData.side = sd; rig.wings.push(g); });
+    const tg = new THREE.Group(); tg.position.set(0,by-.1,-.68); yaw.add(tg); rig.tail = tg;
+    for(let i=0;i<6;i++) part(tg, SPH, "#3c9a4a", [0, -i*.03, -i*.14], [.12 - i*.012, .12 - i*.012, .12]);
+    part(tg, CONE, "#e0433a", [0,-.18,-.9], [.08,.16,.04], {rot:[-1.6,0,0]});
+    // бес мойын мен бас
+    rig.necks = [];
+    for(let k=0;k<5;k++){
+      const a = (k-2)*.42, neck = new THREE.Group(); neck.position.set(0, by+.3, .35); neck.rotation.set(-.5 + Math.abs(k-2)*.08, 0, -a); yaw.add(neck);
+      for(let i=0;i<5;i++) part(neck, SPH, "#3c9a4a", [0, i*.13, i*.02], [.1,.1,.1], {ow:1.08});
+      const hg = new THREE.Group(); hg.position.set(0,.72,.08); hg.rotation.set(.5 - Math.abs(k-2)*.08, 0, a); neck.add(hg);
+      part(hg, SPH, "#3c9a4a", [0,0,0], [.17,.15,.18]);
+      part(hg, SPH, "#3c9a4a", [0,-.04,.16], [.11,.08,.14]);
+      [-1,1].forEach(sd=>part(hg, CONE, "#f2d48a", [sd*.09,.15,-.05], [.03,.12,.03], {rot:[-.4,0,-sd*.3]}));
+      rig.eyes.push(eye(hg, -.08, .05, .12, .055, "#f2c230", -.35), eye(hg, .08, .05, .12, .055, "#f2c230", .35));
+      hg.userData.mouth = new THREE.Vector3(0,-.06,.3);
+      rig.necks.push({neck, head:hg, k});
+    }
+    rig.head = rig.necks[2].head;
+  }
+  // бойын 1.9 бірлікке келтіру
+  const box = new THREE.Box3().setFromObject(root), h = box.max.y - Math.min(0, box.min.y);
+  const sc = (spec.size || 1.9)/h; root.scale.setScalar(sc);
+  rig.height = (box.max.y)*sc; rig.scale = sc;
+  return rig;
+}
+const ANIMALS = {
+  "🐆":{type:"quad", kind:"pounce", body:[.4,.36,.85], color:"#f2b33d", spots:"#5a3a1a", ring:true, belly:"#fff1d6", legLen:.55, legR:.08, head:{r:.34, snout:[.17,.12,.13,"#fff1d6"]}, ears:"round", tail:"long", iris:"#7cc24a"},
+  "🦅":{type:"bird", kind:"fly", color:"#6b4a2e", belly:"#8a6240", headColor:"#f5f5f0", wing:"#5a3c22", tailColor:"#f5f5f0", iris:"#e8b030"},
+  "🐺":{type:"quad", kind:"howl", body:[.38,.38,.82], color:"#8f9aa6", belly:"#e9eef2", legLen:.62, legR:.08, head:{r:.32, snout:[.15,.13,.24,"#c9d2da"]}, ears:"pointy", earTip:"#5a6470", tail:"bushy", tip:"#f2f4f6", iris:"#f2c230"},
+  "🐎":{type:"quad", kind:"gallop", body:[.42,.46,1.0], color:"#a8683a", legLen:.85, legR:.07, paw:"#2a1a10", neck:.55, maneNeck:"#4a2c18", head:{r:.27, snout:[.16,.16,.34,"#a8683a"]}, ears:"horse", tail:"horse", tailColor:"#4a2c18", iris:"#5a3a20"},
+  "🦁":{type:"quad", kind:"roar", body:[.44,.42,.88], color:"#e0a23a", belly:"#f3d49a", legLen:.55, legR:.1, head:{r:.33, snout:[.18,.14,.14,"#f6dfb0"]}, ears:"round", mane:"#a3561c", tail:"thin", tip:"#7a3e14", iris:"#c9922a"},
+  "🐫":{type:"quad", kind:"sway", body:[.42,.38,.85], color:"#d9b07a", legLen:.95, legR:.07, hump:[.25,-.25], neck:.6, head:{r:.24, snout:[.15,.13,.24,"#cfa36c"]}, ears:"round", tail:"thin", iris:"#4a3020", size:2.0},
+  "🦉":{type:"bird", kind:"drop", owl:true, color:"#9a7a5a", belly:"#e8d8bc", bellyMap:"#b8a080", iris:"#f29a20"},
+  "🦊":{type:"quad", kind:"sneak", body:[.34,.32,.78], color:"#ef7b2a", belly:"#fff6ec", legColor:"#3a2a22", legLen:.5, legR:.065, head:{r:.3, snout:[.13,.11,.24,"#fff6ec"]}, ears:"pointy", earTip:"#3a2a22", tail:"bushy", tip:"#ffffff", iris:"#e8a020"},
+  "🐻":{type:"quad", kind:"roll", body:[.55,.55,.8], color:"#7a4e2e", belly:"#a8784a", legLen:.42, legR:.15, head:{r:.38, snout:[.2,.16,.17,"#c89a6a"]}, ears:"round", tail:"stub", iris:"#3a2416"},
+  "🦌":{type:"quad", kind:"leap", body:[.36,.38,.8], color:"#b9784a", spots:"#f3e2cc", belly:"#f3e2cc", legLen:.82, legR:.06, paw:"#3a2a1a", neck:.35, head:{r:.27, snout:[.13,.12,.2,"#d9a77a"]}, ears:"long", antlers:true, tail:"stub", tailColor:"#ffffff", iris:"#3a2a1a", size:2.1},
+  "🐢":{type:"turtle", kind:"shell", size:1.3},
+  "🐬":{type:"dolphin", kind:"splash", size:1.5},
+  "🐉":{type:"hydra", kind:"dragon", size:2.3}
+};
+function animateRig(rig, m, t, landT){
+  const moving = m.moving;
+  // аяқтар
+  const sp = rig.kind === "gallop" ? 16 : rig.kind === "sway" ? 7 : rig.kind === "shell" ? 6 : 12;
+  rig.legs.forEach(g=>{ g.rotation.x = moving ? Math.sin(t*sp + g.userData.phase)*.6 : (rig.kind==="roll" && !m.landed ? 0 : Math.sin(t*2 + g.userData.phase)*.03); });
+  // қанаттар
+  rig.wings.forEach(g=>{ const sd = g.userData.side, fl = (rig.kind==="fly" || rig.kind==="drop" || rig.kind==="dragon") ? (m.landed ? .35 : 1) : .1;
+    g.rotation.z = sd*(Math.sin(t*(m.landed ? 8 : 16))*.8*fl + .15); });
+  // құйрық
+  if(rig.tail) rig.tail.rotation.y = Math.sin(t*(rig.kind==="sneak" && m.landed ? 14 : 6))*(rig.kind==="sneak" ? .6 : .35);
+  // көз жұму
+  const blink = (t % 3.1) < .12;
+  rig.eyes.forEach(e=>{ e.scale.y = blink ? .12 : 1; });
+  // бас
+  if(rig.head && !rig.necks){
+    rig.head.rotation.set(0, 0, 0);
+    if(rig.kind==="howl" && m.fx.ring != null) rig.head.rotation.x = -.7*Math.sin(Math.min(1, m.fx.ring*1.2)*Math.PI);
+    if(rig.kind==="drop" && m.landed){ const p = m.c % 2.4; rig.head.rotation.y = p < .8 ? (p/.8)*Math.PI*2 : 0; }
+    if(m.landed && rig.kind!=="drop") rig.head.rotation.y = Math.sin(t*1.3)*.25;
+  }
+  if(rig.jaw){ const open = (rig.kind==="roar" && m.fx.ring != null) || (rig.kind==="howl" && m.fx.ring != null); rig.jaw.scale.y = open ? rig.jaw.scale.x*.7 : rig.jaw.scale.x*.08; }
+  if(rig.necks) rig.necks.forEach(({neck, head, k})=>{ neck.rotation.x = -.5 + Math.abs(k-2)*.08 + Math.sin(t*3 + k*1.3)*.12; head.rotation.y = (k-2)*.25 + Math.sin(t*2 + k)*.15; });
+  // дем алу
+  rig.yaw.scale.set(1, 1 + Math.sin(t*3)*.015, 1);
+}
+
 function scene3d(avatar, place, teamColor, still, dragon){
   if(!window.THREE) return false;
   const body = dragon ? "🐉" : avatar, kind = MOVES[body] || "hop", isHydra = kind === "dragon";
@@ -975,26 +1189,11 @@ function scene3d(avatar, place, teamColor, still, dragon){
   for(let s=1;s<=3;s++){ const sh = ph*s/3, x0 = -2.7 + (s-1)*1.55/3, w = -1.15 - x0; add(podG, new THREE.BoxGeometry(w, sh, 1.3), stepM, x0 + w/2, sh/2, 0); }
   if(kind === "splash"){ const pool = new THREE.Mesh(new THREE.CircleGeometry(.75, 32), new THREE.MeshStandardMaterial({color:C("#3aa0ff"), transparent:true, opacity:.75, metalness:.2, roughness:.1}));
     pool.rotation.x = -Math.PI/2; pool.position.set(-3.2,.01,0); scene.add(pool); }
-  // жануар
+  // жануар — мультфильм стиліндегі 3D модель
   const AS = 2.2;
-  const tex = emojiTexture(body);
-  const animal = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true}));
-  scene.add(animal);
-  // бес басты айдаһар: дене, қанаттар, құйрық, бес мойын мен бас
-  const HS = AS/22;                       // 2D жергілікті бірлік → әлем бірлігі
-  const hydra = isHydra ? (()=>{
-    const gm = mat(HYDRA_GREEN, .1, .55, {side:THREE.DoubleSide}), dm = mat(HYDRA_DARK, .1, .6, {side:THREE.DoubleSide}), bm = mat(HYDRA_BELLY, 0, .6);
-    const bodyM = add(scene, new THREE.SphereGeometry(9*HS, 28, 20), gm); bodyM.scale.set(1, 7/9, .8);
-    const belly = add(scene, new THREE.SphereGeometry(5*HS, 20, 14), bm); belly.scale.set(1, .8, .4);
-    const wings = [-1,1].map(sd=>{ const sh = new THREE.Shape(); sh.moveTo(0,0); sh.lineTo(sd*13*HS, 9*HS); sh.lineTo(sd*10*HS, 2*HS); sh.lineTo(sd*12*HS, -3*HS); sh.closePath();
-      return add(scene, new THREE.ShapeGeometry(sh), dm); });
-    const ball = r=>add(scene, new THREE.SphereGeometry(r*HS, 12, 10), gm);
-    const tail = [0,1,2,3,4,5].map(i=>ball(1.5 - i*.12));
-    const necks = [0,1,2,3,4].map(()=>[0,1,2,3,4,5].map(()=>ball(1.35)));
-    const texL = emojiTexture("🐲"), texR = emojiTexture("🐲"); texR.repeat.x = -1; texR.offset.x = 1;
-    const heads = [0,1,2,3,4].map(()=>{ const s = new THREE.Sprite(new THREE.SpriteMaterial({map:texL, transparent:true})); s.scale.set(HEAD_SIZE*HS*1.15, HEAD_SIZE*HS*1.15, 1); scene.add(s); return s; });
-    return {bodyM, belly, wings, tail, necks, heads, texL, texR};
-  })() : null;
+  const rig = makeRig(ANIMALS[body] || ANIMALS["🐆"]);
+  const mover = new THREE.Group(); mover.add(rig.root); scene.add(mover);
+  const _v = new THREE.Vector3(), _d = new THREE.Vector3();
   const blob = new THREE.Mesh(new THREE.CircleGeometry(.55, 32), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:.3, depthWrite:false}));
   blob.rotation.x = -Math.PI/2; scene.add(blob);
   // дыбыс толқындары
@@ -1039,30 +1238,19 @@ function scene3d(avatar, place, teamColor, still, dragon){
     podG.position.y = -(1 - easeBack(clamp01(t/.55)))*(ph+.4);
     const m = choreo(kind, t);
     const gy = groundAt(m.x, ph, FLYERS[kind] && !m.landed ? 1 : 0);
-    const AX = m.x, AY = gy + (isHydra ? 10*HS : AS/2) + m.y*AS*.6;
-    animal.visible = !isHydra && m.visible; blob.visible = m.visible;
-    const flip = (m.moving && face.dir < 0 && kind !== "drop") ? -1 : 1;
-    // гидраны жергілікті 2D бірліктен әлемге көшіру
-    const W3 = (u, v, z=0)=>[AX + u*HS*flip, AY - v*HS, .1 + z];
-    let L = null;
-    if(hydra){
-      L = hydraLayout(t, m.moving);
-      const setP = (o, u, v, z)=>{ const p = W3(u, v, z); o.position.set(p[0], p[1], p[2]); o.visible = m.visible; };
-      setP(hydra.bodyM, 0, 3, 0); setP(hydra.belly, 0, 5, 7*HS*.8);
-      hydra.wings.forEach((w, k)=>{ const sd = k ? 1 : -1; setP(w, sd*4, 0, -.15); w.scale.x = flip; w.rotation.z = -sd*L.w*flip; });
-      hydra.tail.forEach((b, i)=>{ const [u, v] = quadPt([6,5],[15,10],[18,3], i/5); setP(b, u, v, -.05); });
-      L.heads.forEach((h, k)=>{
-        const [p0, c, p1] = neckCurve(h);
-        hydra.necks[k].forEach((b, i)=>{ const [u, v] = quadPt(p0, c, p1, i/5); setP(b, u, v, .05); });
-        const hd = hydra.heads[k]; setP(hd, h.x, h.y, .25);
-        const finalDir = h.dir*flip;
-        hd.material.map = finalDir === face.dir ? hydra.texL : hydra.texR;
-      });
-    }
-    tex.repeat.x = flip * (m.sx < 0 ? -1 : 1); tex.offset.x = tex.repeat.x < 0 ? 1 : 0;
-    animal.scale.set(AS*Math.abs(m.sx), AS*m.sy, 1);
-    animal.position.set(AX, AY, .1);
-    animal.material.rotation = -m.rot*flip;
+    const AX = m.x, AY = gy + m.y*1.1;
+    blob.visible = mover.visible = m.visible;
+    mover.position.set(AX, AY, .1);
+    mover.rotation.z = -m.rot;
+    // қонғанда «серіппедей» жаншылып, қайта созылады
+    let sqx = kind === "drop" ? 1 : Math.abs(m.sx), sqy = m.sy;
+    if(m.landed && m.c < .35){ const q = Math.sin(m.c/.35*Math.PI); sqy *= 1 - .22*q; sqx *= 1 + .14*q; }
+    mover.scale.set(sqx, sqy, sqx);
+    const wantYaw = (m.moving && kind !== "drop") ? Math.PI/2 : 0;
+    rig.yaw.rotation.y += (wantYaw - rig.yaw.rotation.y) * (still ? 1 : .12);
+    animateRig(rig, m, t);
+    mover.updateMatrixWorld(true);
+    const headPos = rig.head ? rig.head.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(AX, AY + rig.height*.8, .1);
     blob.position.set(AX, gy + .01, .1); blob.scale.setScalar(Math.max(.35, 1 - m.y*.35)); blob.material.opacity = Math.max(.08, .3 - m.y*.08);
     // дыбыс толқыны
     rings.forEach((r,i)=>{
@@ -1070,7 +1258,7 @@ function scene3d(avatar, place, teamColor, still, dragon){
       if(p == null){ r.material.opacity = 0; return; }
       const q = clamp01(p*1.2 - i*.18), s = .3 + q*1.6;
       r.scale.setScalar(s); r.material.opacity = .7*(1-q)*(q>0?1:0);
-      r.position.set(AX + face.dir*.55, AY + .35, .3);
+      r.position.set(headPos.x, headPos.y + .1, headPos.z + .25);
       r.quaternion.copy(cam.quaternion); r.rotateZ(face.dir < 0 ? Math.PI*.7 : -Math.PI*.3);
     });
     // су тамшылары
@@ -1089,11 +1277,12 @@ function scene3d(avatar, place, teamColor, still, dragon){
       if(on){
         // әр бастың аузынан, сол бас қараған жаққа
         for(let i=0;i<FN;i++){
-          const h = L.heads[i % 5], [mu, mv] = hydraMouth(h, face), mp = W3(mu, mv, .3), dir = h.dir*flip;
+          const hd = rig.necks[i % 5].head;
+          hd.localToWorld(_v.copy(hd.userData.mouth)); hd.getWorldDirection(_d);
           fireLife[i] += .024 + (i%7)*.002; if(fireLife[i] > 1) fireLife[i] -= 1;
           const q = fireLife[i], spread = q*.22;
-          const x = mp[0] + dir*q*1.4, y = mp[1] + Math.sin(i*12.9 + t*9)*spread + q*.1, z = mp[2] + q*.5 + Math.cos(i*7.1 + t*7)*spread;
-          fp.setXYZ(i, x, y, z); cp.setXYZ(i, x - .04*dir, y, z);
+          const x = _v.x + _d.x*q*1.5, y = _v.y + _d.y*q*1.5 + Math.sin(i*12.9 + t*9)*spread + q*.1, z = _v.z + _d.z*q*1.5 + Math.cos(i*7.1 + t*7)*spread;
+          fp.setXYZ(i, x, y, z); cp.setXYZ(i, x - _d.x*.04, y, z - _d.z*.04);
         }
         fp.needsUpdate = cp.needsUpdate = true; fire.material.opacity = .85 + Math.sin(t*30)*.1;
       }
@@ -1102,7 +1291,7 @@ function scene3d(avatar, place, teamColor, still, dragon){
     const liftStart = Math.max(2.3, T_IN + m.D + .1);
     reward.visible = t > liftStart;
     const le = easeBack(clamp01((t - liftStart)/.45));
-    reward.position.set(AX, lerp(AY, AY + (isHydra ? 20*HS + .35 : AS*.5 + .25), le) + Math.sin(t*3)*.06, lerp(.5, .1, le));
+    reward.position.set(AX, lerp(AY + rig.height*.6, AY + rig.height*sqy + .3, le) + Math.sin(t*3)*.06, lerp(.5, .1, le));
     reward.rotation.y = place===1 ? (t-liftStart)*1.3 : place<=3 ? Math.sin(t*2)*.45 : t*1.6;
     glow.intensity = t > liftStart + .3 ? 1.1 + Math.sin(t*4)*.4 : 0;
     sparks.visible = t > liftStart + .35;

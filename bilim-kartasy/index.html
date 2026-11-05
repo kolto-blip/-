@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Білім картасы</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat+Alternates:wght@600;800&family=PT+Sans:wght@400;700&family=PT+Mono&display=swap">
+<style>
+/* Layout: a school exercise-book page (grid paper + red margin), score strip on top, 5 subject-pair columns of point tiles */
+:root{
+  --paper:#f6f8fc; --grid:rgba(40,74,170,.10); --ink:#1d3a8f; --ink-soft:#4b5f99;
+  --margin:#d23a4c; --mark:#f4cf4f; --card:#ffffff; --line:#cdd6ec;
+  --good:#1f8a52; --bad:#c2333f; --fg:#1b2240; --muted:#5d6788; --used:#e7ebf5;
+  --f-display:"Montserrat Alternates","Trebuchet MS",sans-serif;
+  --f-body:"PT Sans","Segoe UI",Arial,sans-serif;
+  --f-mono:"PT Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#121725; --grid:rgba(143,176,255,.07); --ink:#9db8ff; --ink-soft:#8796c4;
+  --margin:#ff6b7b; --mark:#e6c351; --card:#1b2234; --line:#2c3652;
+  --good:#4cc488; --bad:#ff7380; --fg:#e7ebf7; --muted:#9aa4c4; --used:#161c2c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#121725; --grid:rgba(143,176,255,.07); --ink:#9db8ff; --ink-soft:#8796c4;
+  --margin:#ff6b7b; --mark:#e6c351; --card:#1b2234; --line:#2c3652;
+  --good:#4cc488; --bad:#ff7380; --fg:#e7ebf7; --muted:#9aa4c4; --used:#161c2c; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:22px 22px;
+  color:var(--fg); font-family:var(--f-body); font-size:16px; line-height:1.5;
+  min-height:100vh;
+}
+.page{max-width:1180px;margin:0 auto;position:relative;
+  padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:28px}
+@media (min-width:900px){
+  .page{padding-left:max(64px,env(safe-area-inset-left,0px))}
+  .page::before{content:"";position:absolute;top:0;bottom:0;left:40px;width:2px;background:var(--margin);opacity:.55}
+}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.eyebrow{font-family:var(--f-mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--margin)}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(32px,6vw,54px);line-height:1.05;margin:4px 0 6px;color:var(--ink);text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:62ch}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1.5px solid var(--ink);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font-weight:700}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.btn.primary:hover{filter:brightness(1.1)}
+
+/* teams */
+.teams-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.h2{font-family:var(--f-display);font-weight:600;font-size:18px;margin:0;color:var(--ink)}
+.counter{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.counter button{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);font-weight:700}
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:12px}
+.team{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;position:relative;transition:border-color .2s, box-shadow .2s}
+.team.turn{border-color:var(--ink);box-shadow:0 0 0 4px color-mix(in srgb,var(--mark) 55%,transparent)}
+.team .tag{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);min-height:18px}
+.team.turn .tag{color:var(--margin)}
+.team input{border:0;border-bottom:1.5px dashed var(--line);background:transparent;font:700 17px var(--f-body);color:var(--fg);padding:2px 0;width:100%}
+.score-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.score{font-family:var(--f-display);font-weight:800;font-size:30px;color:var(--ink);font-variant-numeric:tabular-nums}
+.adj{display:flex;gap:4px}
+.adj button{border:1px solid var(--line);background:transparent;border-radius:6px;padding:2px 8px;font-size:13px;color:var(--muted)}
+.adj button:hover{border-color:var(--ink);color:var(--ink)}
+
+/* board */
+.board{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.cat{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cat-head{background:var(--ink);color:var(--paper);border-radius:10px;padding:12px;min-height:84px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.cat-head b{font-family:var(--f-display);font-weight:600;font-size:15px;line-height:1.25}
+.cat-head span{font-size:13px;opacity:.8}
+.tile{border:1.5px solid var(--line);background:var(--card);border-radius:10px;height:74px;font-family:var(--f-display);font-weight:800;font-size:26px;color:var(--ink);font-variant-numeric:tabular-nums;transition:transform .15s,border-color .15s}
+.tile:hover:not(:disabled){transform:translateY(-2px);border-color:var(--ink)}
+.tile:disabled{background:var(--used);color:var(--muted);cursor:default;font-size:14px;font-family:var(--f-mono);font-weight:400;border-style:dashed}
+@media (max-width:760px){
+  .board{grid-template-columns:1fr}
+  .cat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .cat-head{grid-column:1/-1;min-height:0;padding:10px 12px}
+  .tile{height:56px;font-size:20px}
+}
+
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 28px;border-top:1.5px dashed var(--line);padding-top:20px;color:var(--muted);font-size:15px}
+.rules h3{font-family:var(--f-display);font-size:15px;color:var(--ink);margin:0 0 4px;font-weight:600}
+.rules p{margin:0}
+
+/* modal */
+.overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--fg) 45%,transparent);display:flex;align-items:center;justify-content:center;z-index:20;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--card);border-radius:14px;max-width:680px;width:100%;max-height:100%;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:16px;border:1.5px solid var(--line);
+  background-image:linear-gradient(90deg,transparent 30px,var(--margin) 30px,var(--margin) 31.5px,transparent 31.5px);background-repeat:no-repeat;padding-left:52px}
+.sheet-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.pill{display:inline-block;border-radius:999px;padding:2px 10px;background:var(--mark);color:#3a2d00;font-weight:700;font-family:var(--f-body)}
+.question{font-family:var(--f-display);font-weight:600;font-size:clamp(19px,3vw,24px);line-height:1.35;color:var(--fg);margin:0;text-wrap:balance}
+.timer{height:6px;background:var(--used);border-radius:3px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--ink);width:100%;transition:width 1s linear}
+.timer.low i{background:var(--margin)}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.opts{grid-template-columns:1fr}.sheet{padding:20px 18px 20px 44px;background-image:linear-gradient(90deg,transparent 24px,var(--margin) 24px,var(--margin) 25.5px,transparent 25.5px)}}
+.opt{text-align:left;border:1.5px solid var(--line);background:var(--paper);border-radius:10px;padding:12px 14px;display:flex;gap:10px;align-items:baseline;font-size:17px}
+.opt:hover:not(:disabled){border-color:var(--ink)}
+.opt .k{font-family:var(--f-mono);color:var(--muted);font-size:14px}
+.opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,var(--card))}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,var(--card))}
+.opt:disabled{cursor:default}
+.verdict{border-radius:10px;padding:12px 14px;font-size:16px;border:1.5px solid var(--line)}
+.verdict b{display:block;font-family:var(--f-display);font-size:17px;margin-bottom:2px}
+.verdict.ok b{color:var(--good)} .verdict.no b{color:var(--bad)}
+.sheet-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+
+.final h2{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,5vw,38px);margin:0;color:var(--ink)}
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.rank li{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:18px}
+.rank li:first-child{border-color:var(--ink);background:color-mix(in srgb,var(--mark) 30%,var(--card));font-weight:700}
+.rank .pts{font-family:var(--f-display);font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header>
+    <div>
+      <div class="eyebrow">Пәнаралық ойын · 7–9 сынып</div>
+      <h1>Білім картасы</h1>
+      <p class="lede">Әр бағанада екі пән біріктірілген. Топтар кезекпен ұпайы бар ұяшықты таңдап, сұраққа 30 секунд ішінде жауап береді. Бір ұяшықта жасырын ×2 бонус бар.</p>
+    </div>
+    <div class="tools">
+      <button class="btn" id="btn-reset" type="button">Жаңа ойын</button>
+      <button class="btn primary" id="btn-finish" type="button">Қорытынды</button>
+    </div>
+  </header>
+
+  <section aria-labelledby="teams-title">
+    <div class="teams-head">
+      <h2 class="h2" id="teams-title">Топтар</h2>
+      <div class="counter">
+        <span>Топ саны</span>
+        <button type="button" id="team-minus" aria-label="Топты азайту">−</button>
+        <b id="team-count">4</b>
+        <button type="button" id="team-plus" aria-label="Топты қосу">+</button>
+      </div>
+    </div>
+    <div class="teams" id="teams"></div>
+  </section>
+
+  <section class="board" id="board" aria-label="Ойын тақтасы"></section>
+
+  <section class="rules">
+    <div><h3>Қалай ойнайды</h3><p>Кезектегі топ ұяшық таңдайды. Дұрыс жауап ұпай әкеледі, қате жауапта ұпай берілмейді. Кезек келесі топқа өтеді.</p></div>
+    <div><h3>Мұғалімге</h3><p>Топ атауларын тікелей өзгертуге болады. Ауызша жауап немесе қосымша тапсырма үшін ұпайды ±100 батырмаларымен түзетіңіз.</p></div>
+    <div><h3>Біріктірілген пәндер</h3><p>Математика мен география, биология мен химия, тарих пен әдебиет, ағылшын тілі мен информатика, физика мен математика.</p></div>
+  </section>
+</div>
+
+<div class="overlay" id="q-overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="q-text">
+    <div class="sheet-top"><span id="q-meta"></span><span id="q-clock">30 с</span></div>
+    <div class="timer" id="q-timer"><i></i></div>
+    <p class="question" id="q-text"></p>
+    <div class="opts" id="q-opts"></div>
+    <div class="verdict" id="q-verdict" hidden></div>
+    <div class="sheet-actions"><button class="btn primary" id="q-next" type="button" hidden>Келесі топ</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="f-overlay" hidden>
+  <div class="sheet final" role="dialog" aria-modal="true" aria-labelledby="f-title">
+    <div class="sheet-top"><span>Ойын аяқталды</span></div>
+    <h2 id="f-title"></h2>
+    <ol class="rank" id="f-rank"></ol>
+    <div class="sheet-actions">
+      <button class="btn" id="f-close" type="button">Тақтаға оралу</button>
+      <button class="btn primary" id="f-new" type="button">Жаңа ойын</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATS = [
+  { name:"Математика + География", sub:"масштаб, қашықтық, биіктік", qs:[
+    {p:100,q:"Карта масштабы 1 : 100 000. Картадағы 3 см жердегі қанша қашықтыққа тең?",o:["30 км","3 км","0,3 км","300 км"],a:1,n:"1 см = 100 000 см = 1 км, сондықтан 3 см = 3 км."},
+    {p:200,q:"Астана мен Алматы арасындағы жол шамамен 1200 км. Автобус 80 км/сағ жылдамдықпен жүрсе, жолға қанша уақыт кетеді?",o:["12 сағат","20 сағат","15 сағат","10 сағат"],a:2,n:"t = S : v = 1200 : 80 = 15 сағат."},
+    {p:300,q:"Әр 1000 м биіктеген сайын ауа шамамен 6 °C-қа суыйды. Тау етегінде +24 °C болса, 3000 м биіктікте қанша градус болады?",o:["+18 °C","+6 °C","0 °C","−6 °C"],a:1,n:"3 × 6 = 18 °C төмендейді: 24 − 18 = +6 °C."},
+    {p:400,q:"Хан Тәңірі шыңы ≈ 7010 м, Каспий теңізі деңгейі ≈ −28 м. Олардың биіктік айырмасы қанша?",o:["6982 м","7038 м","7010 м","7028 м"],a:1,n:"7010 − (−28) = 7010 + 28 = 7038 м."}
+  ]},
+  { name:"Биология + Химия", sub:"ағзадағы заттар мен элементтер", qs:[
+    {p:100,q:"Фотосинтез кезінде өсімдік ауаға қандай газ бөледі?",o:["CO₂","N₂","O₂","H₂"],a:2,n:"Өсімдік көмірқышқыл газын сіңіріп, оттегі (O₂) бөледі."},
+    {p:200,q:"Асқазан сөлінің құрамында қандай қышқыл бар?",o:["Күкірт қышқылы","Тұз қышқылы (HCl)","Сірке қышқылы","Азот қышқылы"],a:1,n:"Тұз қышқылы ақуыздың қорытылуына және микробтарды жоюға көмектеседі."},
+    {p:300,q:"Гемоглобиннің құрамындағы қай элемент оттегін тасымалдайды?",o:["Кальций","Магний","Мырыш","Темір"],a:3,n:"Гемоглобиндегі темір (Fe) оттегімен байланысады. Темір жетіспесе, анемия болады."},
+    {p:400,q:"Адам денесінің массасы бойынша қай химиялық элемент ең көп?",o:["Көміртек","Оттегі","Сутек","Азот"],a:1,n:"Оттегі дене массасының шамамен 65%-ын құрайды, оның басым бөлігі судың құрамында."}
+  ]},
+  { name:"Тарих + Қазақ әдебиеті", sub:"тұлғалар мен шығармалар", qs:[
+    {p:100,q:"«Қара сөздер» (ғақлия) шығармасының авторы кім?",o:["Ыбырай Алтынсарин","Абай Құнанбайұлы","Шәкәрім Құдайбердіұлы","Мағжан Жұмабаев"],a:1,n:"Абай 45 қара сөз жазған."},
+    {p:200,q:"Абайдың өмірі мен дәуірі суреттелген «Абай жолы» роман-эпопеясын кім жазды?",o:["Сәбит Мұқанов","Ғабит Мүсірепов","Мұхтар Әуезов","Ілияс Есенберлин"],a:2,n:"Мұхтар Әуезовтің роман-эпопеясы төрт кітаптан тұрады."},
+    {p:300,q:"Шоқан Уәлиханов алғаш рет жазып алып, зерттеген қырғыз халқының эпосы қайсы?",o:["«Манас»","«Алпамыс»","«Қозы Көрпеш – Баян сұлу»","«Ер Тарғын»"],a:0,n:"Шоқан 1856 жылы «Манас» эпосының «Көкетай ханның асы» бөлімін жазып алған."},
+    {p:400,q:"«Маса» өлеңдер жинағының авторы, Алаш қозғалысы көшбасшыларының бірі кім?",o:["Әлихан Бөкейхан","Міржақып Дулатұлы","Ахмет Байтұрсынұлы","Жүсіпбек Аймауытов"],a:2,n:"Ахмет Байтұрсынұлы «Маса» жинағын 1911 жылы шығарған. Ол қазақ әліпбиінің реформаторы."}
+  ]},
+  { name:"Ағылшын тілі + Информатика", sub:"IT сөздігі және санау жүйелері", qs:[
+    {p:100,q:"«Keyboard» сөзі қазақша қалай аударылады?",o:["Тінтуір","Экран","Пернетақта","Принтер"],a:2,n:"Keyboard — пернетақта, mouse — тінтуір, screen — экран."},
+    {p:200,q:"Which device is used to put documents on paper?",o:["Scanner","Printer","Monitor","Mouse"],a:1,n:"Printer құжатты қағазға басып шығарады, ал scanner оны компьютерге енгізеді."},
+    {p:300,q:"What is the binary number 1010₂ in decimal? (Екілік 1010₂ саны ондық жүйеде қанша?)",o:["8","12","10","1010"],a:2,n:"1·8 + 0·4 + 1·2 + 0·1 = 10 (ten)."},
+    {p:400,q:"«CPU» аббревиатурасы нені білдіреді?",o:["Central Processing Unit","Computer Personal Unit","Central Program Utility","Control Power Unit"],a:0,n:"CPU — орталық процессор, компьютердің «миы»."}
+  ]},
+  { name:"Физика + Математика", sub:"формула және есептеу", qs:[
+    {p:100,q:"Велосипедші 2 сағатта 30 км жол жүрді. Оның жылдамдығы қандай?",o:["60 км/сағ","15 км/сағ","32 км/сағ","28 км/сағ"],a:1,n:"v = S : t = 30 : 2 = 15 км/сағ."},
+    {p:200,q:"Массасы 5 кг денеге әсер ететін ауырлық күші қанша? (g = 10 Н/кг)",o:["0,5 Н","5 Н","15 Н","50 Н"],a:3,n:"F = m · g = 5 · 10 = 50 Н."},
+    {p:300,q:"Судың тығыздығы 1000 кг/м³. Көлемі 0,5 м³ судың массасы қанша?",o:["500 кг","2000 кг","50 кг","1000,5 кг"],a:0,n:"m = ρ · V = 1000 · 0,5 = 500 кг."},
+    {p:400,q:"Кедергісі 4 Ом өткізгіштен 3 А ток өтеді. Өткізгіштің ұштарындағы кернеу қанша?",o:["7 В","1,33 В","12 В","0,75 В"],a:2,n:"Ом заңы: U = I · R = 3 · 4 = 12 В."}
+  ]}
+];
+const LETTERS = ["А","Ә","Б","В"];
+const TIME = 30;
+const $ = id => document.getElementById(id);
+
+let state, timerId = null, current = null;
+
+function fresh(n){
+  const teams = Array.from({length:n||4},(_,i)=>({name:(i+1)+"-топ",score:0}));
+  return {teams, turn:0, used:{}, bonus:Math.floor(Math.random()*20)};
+}
+
+function renderTeams(){
+  $("team-count").textContent = state.teams.length;
+  const box = $("teams"); box.innerHTML = "";
+  state.teams.forEach((t,i)=>{
+    const el = document.createElement("div");
+    el.className = "team" + (i===state.turn ? " turn":"");
+    el.innerHTML = `<div class="tag">${i===state.turn?"Кезек осы топта":"&nbsp;"}</div>
+      <input id="team-name-${i}" aria-label="Топ атауы" maxlength="24">
+      <div class="score-row"><span class="score">${t.score}</span>
+      <span class="adj"><button type="button" data-d="-100" aria-label="100 ұпай алу">−100</button><button type="button" data-d="100" aria-label="100 ұпай қосу">+100</button></span></div>`;
+    const inp = el.querySelector("input"); inp.value = t.name;
+    inp.addEventListener("input",()=>{ t.name = inp.value || (i+1)+"-топ"; });
+    el.querySelectorAll(".adj button").forEach(b=>b.addEventListener("click",()=>{ t.score += +b.dataset.d; renderTeams(); }));
+    box.appendChild(el);
+  });
+}
+
+function renderBoard(){
+  const board = $("board"); board.innerHTML = "";
+  CATS.forEach((c,ci)=>{
+    const col = document.createElement("div"); col.className = "cat";
+    col.innerHTML = `<div class="cat-head"><b>${c.name}</b><span>${c.sub}</span></div>`;
+    c.qs.forEach((q,qi)=>{
+      const key = ci+"-"+qi, b = document.createElement("button");
+      b.type = "button"; b.className = "tile";
+      const u = state.used[key];
+      if(u){ b.disabled = true; b.textContent = u; }
+      else { b.textContent = q.p; b.setAttribute("aria-label", c.name+", "+q.p+" ұпай"); b.addEventListener("click",()=>openQ(ci,qi)); }
+      col.appendChild(b);
+    });
+    board.appendChild(col);
+  });
+}
+
+function render(){ renderTeams(); renderBoard(); }
+
+function openQ(ci,qi){
+  const c = CATS[ci], q = c.qs[qi], idx = ci*4+qi, bonus = idx===state.bonus;
+  current = {ci,qi,bonus,done:false};
+  const team = state.teams[state.turn];
+  $("q-meta").innerHTML = `${team.name} · ${c.name} · ${q.p * (bonus?2:1)} ұпай ${bonus?'<span class="pill">×2 бонус</span>':''}`;
+  $("q-text").textContent = q.q;
+  const opts = $("q-opts"); opts.innerHTML = "";
+  q.o.forEach((o,i)=>{
+    const b = document.createElement("button"); b.type="button"; b.className="opt";
+    b.innerHTML = `<span class="k">${LETTERS[i]}</span><span></span>`;
+    b.lastChild.textContent = o;
+    b.addEventListener("click",()=>answer(i));
+    opts.appendChild(b);
+  });
+  $("q-verdict").hidden = true; $("q-next").hidden = true;
+  $("q-overlay").hidden = false;
+  startTimer();
+  opts.firstChild.focus();
+}
+
+function startTimer(){
+  let left = TIME; const bar = $("q-timer"), fill = bar.firstElementChild;
+  bar.classList.remove("low"); fill.style.transition="none"; fill.style.width="100%";
+  $("q-clock").textContent = left+" с";
+  requestAnimationFrame(()=>{ fill.style.transition=""; });
+  clearInterval(timerId);
+  timerId = setInterval(()=>{
+    left--; $("q-clock").textContent = left+" с";
+    fill.style.width = (left/TIME*100)+"%";
+    if(left<=10) bar.classList.add("low");
+    if(left<=0){ clearInterval(timerId); answer(-1); }
+  },1000);
+}
+
+function answer(i){
+  if(!current || current.done) return;
+  current.done = true; clearInterval(timerId);
+  const c = CATS[current.ci], q = c.qs[current.qi], team = state.teams[state.turn];
+  const pts = q.p * (current.bonus?2:1);
+  const btns = [...$("q-opts").children];
+  btns.forEach((b,k)=>{ b.disabled = true; if(k===q.a) b.classList.add("right"); else if(k===i) b.classList.add("wrong"); });
+  const ok = i===q.a, v = $("q-verdict");
+  if(ok) team.score += pts;
+  v.className = "verdict " + (ok?"ok":"no");
+  v.innerHTML = `<b>${ok ? "Дұрыс! +"+pts+" ұпай" : (i<0 ? "Уақыт бітті" : "Қате жауап")}</b><span></span>`;
+  v.lastChild.textContent = (ok?"":"Дұрыс жауабы: "+q.o[q.a]+". ") + q.n;
+  v.hidden = false;
+  state.used[current.ci+"-"+current.qi] = team.name + (ok?" ✓":" ✗");
+  const last = Object.keys(state.used).length === CATS.length*4;
+  $("q-next").textContent = last ? "Қорытындыны көру" : "Келесі топ";
+  $("q-next").hidden = false; $("q-next").focus();
+  renderTeams();
+}
+
+function closeQ(){
+  $("q-overlay").hidden = true; current = null;
+  state.turn = (state.turn+1) % state.teams.length;
+  render();
+  if(Object.keys(state.used).length === CATS.length*4) showFinal();
+}
+
+function showFinal(){
+  const sorted = state.teams.map(t=>({...t})).sort((a,b)=>b.score-a.score);
+  const top = sorted.filter(t=>t.score===sorted[0].score);
+  $("f-title").textContent = top.length>1 ? "Тең нәтиже: "+top.map(t=>t.name).join(", ") : "Жеңімпаз: "+top[0].name;
+  $("f-rank").innerHTML = "";
+  sorted.forEach(t=>{ const li=document.createElement("li"); li.innerHTML=`<span></span><span class="pts">${t.score}</span>`; li.firstChild.textContent=t.name; $("f-rank").appendChild(li); });
+  $("f-overlay").hidden = false; $("f-close").focus();
+}
+
+function setTeams(n){
+  n = Math.max(2,Math.min(5,n));
+  while(state.teams.length<n) state.teams.push({name:(state.teams.length+1)+"-топ",score:0});
+  state.teams.length = n;
+  if(state.turn>=n) state.turn = 0;
+  renderTeams();
+}
+
+function start(data){
+  state = (data && data.state) || fresh(4);
+  $("team-minus").onclick = ()=>setTeams(state.teams.length-1);
+  $("team-plus").onclick = ()=>setTeams(state.teams.length+1);
+  $("btn-reset").onclick = ()=>{ state = fresh(state.teams.length); render(); };
+  $("btn-finish").onclick = showFinal;
+  $("q-next").onclick = closeQ;
+  $("f-close").onclick = ()=>{ $("f-overlay").hidden = true; };
+  $("f-new").onclick = ()=>{ $("f-overlay").hidden = true; state = fresh(state.teams.length); render(); };
+  document.addEventListener("keydown",e=>{
+    if($("q-overlay").hidden || !current || current.done) return;
+    const k = {"1":0,"2":1,"3":2,"4":3}[e.key]; if(k!==undefined) answer(k);
+  });
+  window.claude?.hot?.snapshot?.(()=>({state}));
+  render();
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+</body>
+</html>

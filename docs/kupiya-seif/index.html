@@ -1836,6 +1836,8 @@ function start(){
   render(); pollRemote();
 }
 start();
+// #demo ашық бетке кейін жазылса да, тест режимі іске қосылсын
+window.addEventListener("hashchange", ()=>{ if(/(^|[#&])demo\b/.test(location.hash) !== DEMO) location.reload(); });
 </script>
 </body>
 </html>

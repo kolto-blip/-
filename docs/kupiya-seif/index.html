@@ -191,6 +191,7 @@ body[data-stage="3"]{--brass:#c4a0ff;--brass-soft:#6d4fa8}
 .token.remote{border-style:dashed;border-color:var(--fg)}
 .token.remote b{font-size:11px}
 .live{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12px;color:var(--ok)}
+.live-err{font-family:var(--f-mono);font-size:12px;color:var(--no);margin-left:8px}
 .live::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok);animation:blink 1.4s infinite}
 @keyframes blink{50%{opacity:.25}}
 tr.remote td:first-child::after{content:" · басқа құрылғы";color:var(--muted);font-size:12px}
@@ -376,7 +377,7 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
   </div>
 
   <section class="ledger">
-    <h2>Топтар кестесі <span class="live" id="live" hidden>онлайн</span></h2>
+    <h2>Топтар кестесі <span class="live" id="live" hidden>онлайн</span><span class="live-err" id="live-err" hidden></span></h2>
     <div class="tablewrap"><table>
       <thead><tr><th>Топ</th><th>Кезең</th><th>Станция</th><th>Қате</th><th>Кеңес</th><th>Уақыт (айыппен)</th><th>Сейф</th></tr></thead>
       <tbody id="ledger"></tbody>
@@ -504,14 +505,16 @@ const GAME_NAME = "Құпия сейф";
 const RESULTS_URL = "";
 const LS = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
              set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+const SS = { get(k){ try{ return sessionStorage.getItem(k); }catch(e){ return null; } },
+             set(k,v){ try{ sessionStorage.setItem(k,v); }catch(e){} } };   // әр қойындының өз жады: бір браузерде екі топ ойнай алады
 const RESULTS = (()=>{ let u = null; try{ u = new URLSearchParams(location.search).get("r"); }catch(e){}
   if(u) LS.set("results-url", u); return u || LS.get("results-url") || RESULTS_URL; })();
-const QUEUE = (()=>{ try{ return JSON.parse(LS.get("results-queue") || "[]"); }catch(e){ return []; } })();
+const QUEUE = (()=>{ try{ return JSON.parse(SS.get("results-queue") || "[]"); }catch(e){ return []; } })();
 let flushing = false;
 function report(ev){
   if(!RESULTS) return;
   QUEUE.push(Object.assign({game: GAME_NAME}, ev));
-  LS.set("results-queue", JSON.stringify(QUEUE));
+  SS.set("results-queue", JSON.stringify(QUEUE));
   flush();
 }
 async function flush(){
@@ -520,7 +523,7 @@ async function flush(){
   while(QUEUE.length){
     try{
       await fetch(RESULTS, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(QUEUE[0])});
-      QUEUE.shift(); LS.set("results-queue", JSON.stringify(QUEUE));
+      QUEUE.shift(); SS.set("results-queue", JSON.stringify(QUEUE));
     }catch(e){ break; }
   }
   flushing = false; syncStatus();
@@ -1328,7 +1331,8 @@ const parseT = v => { const m = /^(\d+):(\d\d)$/.exec(String(v||"")); return m ?
 async function fetchRows(){
   const res = await fetch(RESULTS, {cache:"no-store"});
   const data = await res.json();
-  return Array.isArray(data) ? data.slice(1) : [];
+  if(!Array.isArray(data)) throw new Error(data && data.error ? data.error : "кесте жауабы түсініксіз");
+  return data.slice(1);
 }
 function teamsFromRows(rows){
   const now = Date.now(), map = {};
@@ -1365,14 +1369,18 @@ async function pollRemote(){
       remoteSeen[r.name] = r.opened;
     }
     REMOTE = list;
-    $("live").hidden = false;
+    $("live").hidden = false; $("live-err").hidden = true;
+    $("live").textContent = list.length ? "онлайн · басқа топтар: " + list.length : "онлайн · басқа топтар әзірге жоқ";
     renderRoute(); renderLedger();
-  }catch(e){ $("live").hidden = true; }
+  }catch(e){
+    $("live").hidden = true; $("live-err").hidden = false;
+    $("live-err").textContent = "Басқа топтар көрінбейді: кестемен байланыс жоқ (" + (e && e.message ? e.message : "қате") + ")";
+  }
   polling = false;
 }
-function saveState(){ if(ONLINE && state.joined) LS.set("seif-state", JSON.stringify({saved:Date.now(), state})); }
+function saveState(){ if(ONLINE && state.joined) SS.set("seif-state", JSON.stringify({saved:Date.now(), state})); }
 function loadState(){
-  try{ const d = JSON.parse(LS.get("seif-state")||"null"); if(d && Date.now()-d.saved < WINDOW_MS && d.state && d.state.joined) return d.state; }catch(e){}
+  try{ const d = JSON.parse(SS.get("seif-state")||"null"); if(d && Date.now()-d.saved < WINDOW_MS && d.state && d.state.joined) return d.state; }catch(e){}
   return null;
 }
 async function showJoin(){
@@ -1421,7 +1429,7 @@ function start(){
   $("btn-reset").onclick = ()=>{
     if(!armed){ armed=true; $("btn-reset").textContent="Растау: бәрін өшіру"; setTimeout(()=>{armed=false;$("btn-reset").textContent="Жаңа ойын";},3000); return; }
     armed=false; $("btn-reset").textContent="Жаңа ойын";
-    if(ONLINE){ LS.set("seif-state",""); state = fresh(1); REMOTE = []; render(); showJoin(); }
+    if(ONLINE){ SS.set("seif-state",""); state = fresh(1); REMOTE = []; render(); showJoin(); }
     else { state = fresh(state.teams.length); render(); }
   };
   $("team-name").oninput = e=>{ if(ONLINE) return; const t=state.teams[state.active]; t.name = e.target.value || (state.active+1)+"-топ"; renderTabs(); renderLedger(); renderClock(); renderRoute(); $("team-av").textContent = avOf(t); };

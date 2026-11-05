@@ -235,14 +235,16 @@ const GAME_NAME = "Білім картасы";
 const RESULTS_URL = "";
 const LS = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
              set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+const SS = { get(k){ try{ return sessionStorage.getItem(k); }catch(e){ return null; } },
+             set(k,v){ try{ sessionStorage.setItem(k,v); }catch(e){} } };   // әр қойындының өз жады: бір браузерде екі топ ойнай алады
 const RESULTS = (()=>{ let u = null; try{ u = new URLSearchParams(location.search).get("r"); }catch(e){}
   if(u) LS.set("results-url", u); return u || LS.get("results-url") || RESULTS_URL; })();
-const QUEUE = (()=>{ try{ return JSON.parse(LS.get("results-queue") || "[]"); }catch(e){ return []; } })();
+const QUEUE = (()=>{ try{ return JSON.parse(SS.get("results-queue") || "[]"); }catch(e){ return []; } })();
 let flushing = false;
 function report(ev){
   if(!RESULTS) return;
   QUEUE.push(Object.assign({game: GAME_NAME}, ev));
-  LS.set("results-queue", JSON.stringify(QUEUE));
+  SS.set("results-queue", JSON.stringify(QUEUE));
   flush();
 }
 async function flush(){
@@ -251,7 +253,7 @@ async function flush(){
   while(QUEUE.length){
     try{
       await fetch(RESULTS, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(QUEUE[0])});
-      QUEUE.shift(); LS.set("results-queue", JSON.stringify(QUEUE));
+      QUEUE.shift(); SS.set("results-queue", JSON.stringify(QUEUE));
     }catch(e){ break; }
   }
   flushing = false; syncStatus();

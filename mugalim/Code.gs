@@ -5,6 +5,7 @@ const HEAD = ['Уақыты', 'Ойын', 'Топ', 'Оқиға', 'Тапсыр�
 
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Скрипт кестеге байланбаған. Кодты кестенің ішінен (Кеңейтімдер → Apps Script) ашылған жобаға қойыңыз.');
   let sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
@@ -15,26 +16,38 @@ function sheet_() {
   return sh;
 }
 
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
 // Ойыннан келген нәтижені жаңа жол етіп жазады
 function doPost(e) {
-  const d = JSON.parse(e.postData.contents);
   const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
   try {
+    const d = JSON.parse(e.postData.contents);
+    lock.waitLock(10000);
     sheet_().appendRow([
       new Date(), d.game || '', d.team || '', d.event || '',
       d.task || '', d.answer || '', d.result || '',
       d.points === undefined ? '' : d.points, d.total === undefined ? '' : d.total
     ]);
+    return json_({ ok: true });
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch (e2) {}
   }
-  return ContentService.createTextOutput('ok');
 }
 
-// Мұғалім панелі нәтижелерді осы арқылы оқиды
-function doGet() {
-  const rows = sheet_().getDataRange().getValues();
-  return ContentService.createTextOutput(JSON.stringify(rows))
-    .setMimeType(ContentService.MimeType.JSON);
+// Мұғалім панелі нәтижелерді осы арқылы оқиды. ?test=1 болса, кестеге тексеру жолын жазады.
+function doGet(e) {
+  try {
+    if (e && e.parameter && e.parameter.test) {
+      sheet_().appendRow([new Date(), 'Тексеру', 'Мұғалім', 'Тексеру', '', '', 'байланыс бар', '', '']);
+      return json_({ ok: true, test: true });
+    }
+    return json_(sheet_().getDataRange().getValues());
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
+  }
 }

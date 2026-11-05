@@ -81,6 +81,7 @@ code{font-family:var(--f-mono);background:var(--soft);padding:1px 5px;border-rad
     <div class="row">
       <input type="url" id="url" placeholder="https://script.google.com/macros/s/…/exec" aria-label="Google Apps Script сілтемесі">
       <button class="btn" id="load" type="button">Жүктеу</button>
+      <button class="btn alt" id="test" type="button">Байланысты тексеру</button>
       <label class="muted"><input type="checkbox" id="auto" checked> әр 15 секунд сайын жаңарту</label>
     </div>
     <div class="msg" id="msg">Сілтеме әлі енгізілмеген. «Баптау» бөліміндегі нұсқаулықты орындаңыз.</div>
@@ -121,6 +122,7 @@ const HEAD = ['Уақыты', 'Ойын', 'Топ', 'Оқиға', 'Тапсыр�
 
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss) throw new Error('Скрипт кестеге байланбаған. Кодты кестенің ішінен (Кеңейтімдер → Apps Script) ашылған жобаға қойыңыз.');
   let sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
@@ -131,28 +133,40 @@ function sheet_() {
   return sh;
 }
 
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
 // Ойыннан келген нәтижені жаңа жол етіп жазады
 function doPost(e) {
-  const d = JSON.parse(e.postData.contents);
   const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
   try {
+    const d = JSON.parse(e.postData.contents);
+    lock.waitLock(10000);
     sheet_().appendRow([
       new Date(), d.game || '', d.team || '', d.event || '',
       d.task || '', d.answer || '', d.result || '',
       d.points === undefined ? '' : d.points, d.total === undefined ? '' : d.total
     ]);
+    return json_({ ok: true });
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch (e2) {}
   }
-  return ContentService.createTextOutput('ok');
 }
 
-// Мұғалім панелі нәтижелерді осы арқылы оқиды
-function doGet() {
-  const rows = sheet_().getDataRange().getValues();
-  return ContentService.createTextOutput(JSON.stringify(rows))
-    .setMimeType(ContentService.MimeType.JSON);
+// Мұғалім панелі нәтижелерді осы арқылы оқиды. ?test=1 болса, кестеге тексеру жолын жазады.
+function doGet(e) {
+  try {
+    if (e &amp;&amp; e.parameter &amp;&amp; e.parameter.test) {
+      sheet_().appendRow([new Date(), 'Тексеру', 'Мұғалім', 'Тексеру', '', '', 'байланыс бар', '', '']);
+      return json_({ ok: true, test: true });
+    }
+    return json_(sheet_().getDataRange().getValues());
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
+  }
 }
 </pre>
     <p class="muted">Нәтижелер кестенің «Нәтижелер» парағына түседі. Кестені тек сіз көресіз. Сілтеме арқылы жазбаларды оқуға болатындықтан, оны оқушылардан басқа адамдарға таратпаңыз.</p>
@@ -257,6 +271,7 @@ async function load(){
   try{
     const res = await fetch(u, {cache:"no-store"});
     const data = await res.json();
+    if(!Array.isArray(data)){ setMsg("Скрипт қатесі: " + (data.error || "белгісіз"), "no"); return; }
     rows = data.slice(1);
     setMsg("Жаңартылды: " + new Date().toLocaleTimeString() + " · жазба саны: " + rows.length, "ok");
     fillFilters(); render();
@@ -299,6 +314,22 @@ function render(){
 }
 $("f-game").onchange = render;
 $("load").onclick = load;
+async function testLink(){
+  const u = $("url").value.trim();
+  if(!u){ setMsg("Алдымен …/exec деп аяқталатын сілтемені өріске қойыңыз.", "no"); return; }
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(u)){
+    setMsg("Сілтеме дұрыс емес. Ол https://script.google.com/macros/s/…/exec түрінде болуы керек (соңында /dev емес, /exec).", "no"); return; }
+  setMsg("Тексерілуде…", "");
+  let res, text;
+  try{ res = await fetch(u + "?test=1", {cache:"no-store"}); text = await res.text(); }
+  catch(e){ setMsg("Google жауап бермеді. Ең жиі себебі: жариялауда «У кого есть доступ / Who has access» өрісінде «Все / Anyone» таңдалмаған. Оны түзетіп, жаңа нұсқа жариялаңыз.", "no"); return; }
+  let data = null; try{ data = JSON.parse(text); }catch(e){}
+  if(!data){ setMsg("Скрипт JSON емес жауап қайтарды. Кодты толық ауыстырып, сақтап, жаңа нұсқа жариялаңыз. Жауаптың басы: " + text.replace(/<[^>]*>/g," ").replace(/\s+/g," ").slice(0,160), "no"); return; }
+  if(Array.isArray(data)){ setMsg("Скрипттің ескі нұсқасы жарияланып тұр. «Баптау» бөліміндегі жаңа кодты қойып, «Управление развертываниями → Новая версия» арқылы қайта жариялаңыз.", "no"); return; }
+  if(data.ok){ setMsg("Байланыс бар! Кестеге «Тексеру» деген жол жазылды. Кестеде ол көрінсе, скрипт дұрыс жұмыс істейді.", "ok"); load(); return; }
+  setMsg("Скрипт қатесі: " + data.error, "no");
+}
+$("test").onclick = testLink;
 function arm(){ clearInterval(timer); if($("auto").checked) timer = setInterval(load, 15000); }
 $("auto").onchange = arm;
 renderLinks(); arm(); if($("url").value) load();

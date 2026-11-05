@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Құпия сейф</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Fira+Sans:wght@400;600&family=JetBrains+Mono:wght@500;800&display=swap">
+<style>
+/* Layout: a vault room. Left: the safe door with 5 code wheels and the final lock. Right: 5 stations, each a sealed envelope with an integrated task. Bottom: team ledger. Single dark look by choice. */
+:root{
+  color-scheme:dark;
+  --steel:#132227; --steel-2:#1b2f35; --steel-3:#24414a; --rivet:#3a5d67;
+  --brass:#d9a441; --brass-soft:#8a6a2e; --paper:#efe6d2; --paper-ink:#2b2416;
+  --fg:#e4ecee; --muted:#93a9ae; --ok:#5fcf8f; --no:#ff7a6b;
+  --f-display:"Oswald","Arial Narrow",sans-serif;
+  --f-body:"Fira Sans","Segoe UI",Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{background:radial-gradient(1200px 600px at 20% -10%,var(--steel-3),transparent 60%),var(--steel);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.5;min-height:100vh}
+.page{max-width:1200px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:24px}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass)}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(38px,7vw,64px);line-height:1;margin:6px 0 8px;letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:60ch}
+.clock{font-family:var(--f-mono);font-weight:800;font-size:clamp(28px,5vw,40px);color:var(--brass);font-variant-numeric:tabular-nums;background:#0b1417;border:1.5px solid var(--rivet);border-radius:10px;padding:6px 16px;text-align:right}
+.clock small{display:block;font-size:11px;font-weight:500;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+
+.btn{border:1.5px solid var(--brass);background:transparent;color:var(--brass);border-radius:8px;padding:8px 14px;font-weight:600}
+.btn:hover:not(:disabled){background:var(--brass);color:var(--steel)}
+.btn.solid{background:var(--brass);color:var(--steel)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{border-color:var(--rivet);color:var(--muted)}
+.btn.ghost:hover:not(:disabled){background:var(--steel-3);color:var(--fg)}
+
+/* team tabs */
+.teambar{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.tab{border:1.5px solid var(--rivet);background:var(--steel-2);border-radius:999px;padding:6px 14px;display:flex;gap:8px;align-items:center}
+.tab[aria-selected="true"]{border-color:var(--brass);background:var(--steel-3)}
+.tab .dots{font-family:var(--f-mono);font-size:12px;color:var(--brass);letter-spacing:.1em}
+.counter{display:flex;align-items:center;gap:6px;margin-left:auto;color:var(--muted);font-size:14px}
+.counter button{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--rivet);background:var(--steel-2)}
+
+.main{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:24px;align-items:start}
+@media (max-width:880px){.main{grid-template-columns:1fr}}
+
+/* safe */
+.safe{background:linear-gradient(160deg,var(--steel-3),var(--steel-2));border:2px solid var(--rivet);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:18px;position:relative;box-shadow:inset 0 0 0 6px var(--steel),0 18px 40px rgba(0,0,0,.35)}
+@media (min-width:881px){.safe{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px)}}
+.safe::before,.safe::after{content:"";position:absolute;width:10px;height:10px;border-radius:50%;background:var(--rivet);top:14px}
+.safe::before{left:14px}.safe::after{right:14px}
+.safe-label{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center}
+.team-name{display:flex;justify-content:center}
+.team-name input{background:transparent;border:0;border-bottom:1.5px dashed var(--rivet);text-align:center;font-family:var(--f-display);font-size:24px;font-weight:500;width:min(100%,260px);padding:2px 4px}
+.wheels{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.wheel{aspect-ratio:3/4;max-width:100%;background:#0b1417;border:1.5px solid var(--rivet);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.wheel b{font-family:var(--f-mono);font-weight:800;font-size:clamp(26px,5vw,40px);color:var(--muted)}
+.wheel span{font-family:var(--f-mono);font-size:10px;color:var(--muted);letter-spacing:.1em}
+.wheel.got{border-color:var(--brass)}
+.wheel.got b{color:var(--brass);animation:pop .4s ease}
+@keyframes pop{0%{transform:translateY(-40%);opacity:0}100%{transform:none;opacity:1}}
+.lock{display:flex;gap:8px}
+.lock input{flex:1;min-width:0;background:#0b1417;border:1.5px solid var(--rivet);border-radius:8px;padding:10px 12px;font-family:var(--f-mono);font-size:22px;letter-spacing:.4em;text-align:center}
+.lock-msg{min-height:24px;text-align:center;font-size:15px;color:var(--muted)}
+.lock-msg.no{color:var(--no)} .lock-msg.ok{color:var(--ok)}
+.opened{border:2px solid var(--brass);border-radius:12px;padding:16px;text-align:center;background:rgba(217,164,65,.08)}
+.opened b{display:block;font-family:var(--f-display);font-size:26px;color:var(--brass);text-transform:uppercase;letter-spacing:.03em}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stats div{background:var(--steel);border-radius:8px;padding:8px 4px}
+.stats b{display:block;font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums}
+.stats span{font-size:12px;color:var(--muted)}
+
+/* stations */
+.stations{display:flex;flex-direction:column;gap:14px}
+.st{background:var(--paper);color:var(--paper-ink);border-radius:6px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px;position:relative;box-shadow:0 8px 20px rgba(0,0,0,.25)}
+.st-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.st-no{font-family:var(--f-display);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:.03em}
+.st-subj{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#7a5a1c}
+.st p{margin:0;font-size:17px}
+.st .hint{font-size:15px;background:#e3d5b5;border-radius:6px;padding:8px 10px}
+.st-row{display:flex;gap:8px;flex-wrap:wrap}
+.st-row input{flex:1 1 160px;min-width:0;border:1.5px solid #b9a77f;background:#fffaf0;color:var(--paper-ink);border-radius:6px;padding:9px 11px;font-size:16px}
+.st .b{border:1.5px solid var(--paper-ink);background:var(--paper-ink);color:var(--paper);border-radius:6px;padding:8px 14px;font-weight:600}
+.st .b.alt{background:transparent;color:var(--paper-ink)}
+.st .b:disabled{opacity:.4;cursor:not-allowed}
+.st-msg{font-size:15px;min-height:0}
+.st-msg.no{color:#b23324}
+.st.done{background:#d9ccb0}
+.st.done .seal{position:absolute;right:14px;top:12px;font-family:var(--f-mono);font-weight:800;color:#1d6b40;border:2px solid #1d6b40;border-radius:6px;padding:2px 8px;transform:rotate(-6deg);font-size:14px}
+.st.done p.task{opacity:.75}
+
+/* ledger */
+.ledger h2{font-family:var(--f-display);font-weight:500;text-transform:uppercase;letter-spacing:.04em;font-size:20px;margin:0 0 10px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;min-width:520px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--rivet)}
+th{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td.num{font-family:var(--f-mono)}
+tr.lead td:first-child{color:var(--brass);font-weight:600}
+.pill{font-family:var(--f-mono);font-size:12px;border-radius:999px;padding:2px 8px;border:1px solid var(--rivet);color:var(--muted)}
+.pill.open{border-color:var(--ok);color:var(--ok)}
+.note{color:var(--muted);font-size:14px;margin:10px 0 0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header>
+    <div>
+      <div class="eyebrow">Пәнаралық квест · 5 станция · 7–9 сынып</div>
+      <h1>Құпия сейф</h1>
+      <p class="lede">Әр станцияда екі пән біріктірілген тапсырма бар. Дұрыс жауап сейф кодының бір цифрын ашады. Бес цифрды жинап, сейфті бірінші ашқан топ жеңеді. Қате жауап +30 с, кеңес +60 с айып қосады.</p>
+    </div>
+    <div class="clock" aria-live="off"><small id="clock-label">Уақыт</small><span id="clock">00:00</span></div>
+  </header>
+
+  <nav class="teambar" aria-label="Топтар">
+    <div id="tabs" role="tablist" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    <div class="counter">
+      <span>Топ саны</span>
+      <button type="button" id="team-minus" aria-label="Топты азайту">−</button>
+      <b id="team-count">4</b>
+      <button type="button" id="team-plus" aria-label="Топты қосу">+</button>
+      <button type="button" class="btn ghost" id="btn-reset" style="margin-left:8px">Жаңа ойын</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <section class="safe" aria-label="Сейф">
+      <div class="safe-label">Сейф иесі</div>
+      <div class="team-name"><input id="team-name" aria-label="Топ атауы" maxlength="24"></div>
+      <div class="wheels" id="wheels"></div>
+      <div id="lock-area"></div>
+      <div class="stats" id="stats"></div>
+    </section>
+    <section class="stations" id="stations" aria-label="Станциялар"></section>
+  </div>
+
+  <section class="ledger">
+    <h2>Топтар кестесі</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Топ</th><th>Станция</th><th>Қате</th><th>Кеңес</th><th>Уақыт (айыппен)</th><th>Сейф</th></tr></thead>
+      <tbody id="ledger"></tbody>
+    </table></div>
+    <p class="note">Әр топтың уақыты бірінші жауабынан басталады. Бір компьютерде топтарды жоғарыдағы батырмалармен ауыстырыңыз, немесе әр топ өз құрылғысында ойнай алады.</p>
+  </section>
+</div>
+
+<script>
+const STATIONS = [
+  { subj:"Қазақ тілі + Математика",
+    task:"Мақалды толықтырыңыз: «Бір жігітке ___ өнер аз». Жетіспейтін сан есімді цифрмен жазып, оны 10-ға бөліңіз. Жауабы қандай сан?",
+    hint:"Мақалда «жетпіс» деген сан есім бар: 70 : 10 = ?",
+    ans:["7","жеті"], note:"«Бір жігітке жетпіс өнер аз»: 70 : 10 = 7." },
+  { subj:"Ағылшын тілі + География",
+    task:"How many countries share a land border with Kazakhstan? Write the answer as an English word.",
+    hint:"Ресей, Қытай, Қырғызстан, Өзбекстан, Түрікменстан. Санап, ағылшынша жазыңыз.",
+    ans:["five","5"], note:"Five: Russia, China, Kyrgyzstan, Uzbekistan, Turkmenistan." },
+  { subj:"Химия + Физика",
+    task:"Мұз жылынғанда суға айналады. Заттың қатты күйден сұйық күйге өтуі қалай аталады? Бір сөзбен жазыңыз.",
+    hint:"Бұл физикалық құбылыс, заттың құрамы өзгермейді. Сөз «б» әрпінен басталады.",
+    ans:["балқу","балку"], note:"Балқу. Су молекуласы (H₂O) өзгермейді, тек агрегаттық күй өзгереді." },
+  { subj:"Биология + Математика",
+    task:"Тыныштық күйдегі адамның жүрегі минутына шамамен 70 рет соғады. Бір сағатта неше рет соғады?",
+    hint:"1 сағат = 60 минут. 70 · 60 = ?",
+    ans:["4200"], note:"70 · 60 = 4200 рет." },
+  { subj:"Информатика + Тарих",
+    task:"Қазақ хандығы құрылған жыл екілік санау жүйесінде 10110111001₂ болып жазылады. Оны ондық жүйеге аударыңыз.",
+    hint:"Разряд мәндері: 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1. Бірліктер тұрған разрядтарды қосыңыз.",
+    ans:["1465"], note:"1024 + 256 + 128 + 32 + 16 + 8 + 1 = 1465 жыл." }
+];
+const WRONG_PEN = 30, HINT_PEN = 60;
+const $ = id => document.getElementById(id);
+let state, tick = null;
+
+const norm = s => s.toLowerCase().trim().replace(/\s+/g,"")
+  .replace(/[әа]/g,"а").replace(/ғ/g,"г").replace(/қ/g,"к").replace(/ң/g,"н").replace(/ө/g,"о")
+  .replace(/[ұү]/g,"у").replace(/һ/g,"х").replace(/і/g,"и").replace(/ё/g,"е");
+
+function newTeam(i){
+  return {name:(i+1)+"-топ", code:STATIONS.map(()=>Math.floor(Math.random()*10)),
+    solved:STATIONS.map(()=>false), hints:STATIONS.map(()=>false), msgs:STATIONS.map(()=>""),
+    wrong:0, start:null, end:null, opened:false, lockMsg:""};
+}
+function fresh(n){ return {teams:Array.from({length:n},(_,i)=>newTeam(i)), active:0}; }
+
+const penalty = t => t.wrong*WRONG_PEN + t.hints.filter(Boolean).length*HINT_PEN;
+function elapsed(t){
+  if(!t.start) return 0;
+  return Math.floor(((t.end||Date.now()) - t.start)/1000) + penalty(t);
+}
+const fmt = s => String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+const touch = t => { if(!t.start) t.start = Date.now(); };
+
+function renderTabs(){
+  $("team-count").textContent = state.teams.length;
+  const tabs = $("tabs"); tabs.innerHTML = "";
+  state.teams.forEach((t,i)=>{
+    const b = document.createElement("button");
+    b.type="button"; b.className="tab"; b.setAttribute("role","tab");
+    b.setAttribute("aria-selected", i===state.active);
+    b.innerHTML = `<span></span><span class="dots">${t.opened?"АШЫҚ":t.solved.map(s=>s?"●":"○").join("")}</span>`;
+    b.firstChild.textContent = t.name;
+    b.onclick = ()=>{ state.active=i; render(); };
+    tabs.appendChild(b);
+  });
+}
+
+function renderSafe(){
+  const t = state.teams[state.active];
+  $("team-name").value = t.name;
+  $("wheels").innerHTML = t.code.map((d,i)=>`<div class="wheel ${t.solved[i]?"got":""}"><b>${t.solved[i]?d:"?"}</b><span>${i+1}-СТ</span></div>`).join("");
+  const all = t.solved.every(Boolean), la = $("lock-area");
+  if(t.opened){
+    la.innerHTML = `<div class="opened"><b>Сейф ашылды!</b>Нәтиже: ${fmt(elapsed(t))}</div>`;
+  } else {
+    la.innerHTML = `<div class="lock"><input id="lock-input" inputmode="numeric" maxlength="5" placeholder="•••••" aria-label="Сейф коды" ${all?"":"disabled"}><button class="btn solid" id="lock-btn" type="button" ${all?"":"disabled"}>Ашу</button></div>
+      <div class="lock-msg ${t.lockMsg.startsWith("Қате")?"no":""}" id="lock-msg">${t.lockMsg || (all ? "Барлық цифр жиналды. Кодты станция ретімен енгізіңіз." : "Сейфті ашу үшін 5 станцияның бәрін шешіңіз.")}</div>`;
+    if(all){
+      const inp = $("lock-input");
+      const tryOpen = ()=>{
+        if(inp.value.replace(/\D/g,"") === t.code.join("")){ t.opened = true; t.end = Date.now(); t.lockMsg=""; render(); }
+        else { t.wrong++; t.lockMsg = "Қате код. +30 с айып. Цифрларды станция ретімен оқыңыз."; renderSafe(); renderTabs(); renderLedger(); $("lock-input").focus(); }
+      };
+      $("lock-btn").onclick = tryOpen;
+      inp.onkeydown = e=>{ if(e.key==="Enter") tryOpen(); };
+    }
+  }
+  $("stats").innerHTML = `<div><b>${t.solved.filter(Boolean).length}/5</b><span>станция</span></div><div><b>${t.wrong}</b><span>қате</span></div><div><b>${t.hints.filter(Boolean).length}</b><span>кеңес</span></div>`;
+}
+
+function renderStations(){
+  const t = state.teams[state.active], box = $("stations"); box.innerHTML = "";
+  STATIONS.forEach((s,i)=>{
+    const el = document.createElement("article");
+    el.className = "st" + (t.solved[i]?" done":"");
+    el.innerHTML = `<div class="st-top"><span class="st-no">${i+1}-станция</span><span class="st-subj"></span></div>
+      <p class="task"></p>
+      ${t.hints[i] && !t.solved[i] ? `<div class="hint"></div>`:""}
+      ${t.solved[i] ? `<div class="seal">ЦИФР: ${t.code[i]}</div><div class="st-msg"></div>` :
+       `<div class="st-row"><input id="ans-${i}" aria-label="${i+1}-станция жауабы" placeholder="Жауабыңыз" autocomplete="off">
+        <button class="b" type="button" data-act="check">Тексеру</button>
+        <button class="b alt" type="button" data-act="hint" ${t.hints[i]?"disabled":""}>Кеңес +60 с</button></div>
+        <div class="st-msg ${t.msgs[i]?"no":""}"></div>`}`;
+    el.querySelector(".st-subj").textContent = s.subj;
+    el.querySelector(".task").textContent = s.task;
+    const h = el.querySelector(".hint"); if(h) h.textContent = "Кеңес: "+s.hint;
+    const m = el.querySelector(".st-msg"); m.textContent = t.solved[i] ? "Дұрыс! "+s.note : t.msgs[i];
+    if(!t.solved[i]){
+      const inp = el.querySelector("input");
+      const check = ()=>{
+        if(!inp.value.trim()) return;
+        touch(t);
+        if(s.ans.some(a=>norm(a)===norm(inp.value))){ t.solved[i]=true; t.msgs[i]=""; }
+        else { t.wrong++; t.msgs[i] = "Қате. +30 с айып. Тағы ойланып көріңіз."; }
+        render();
+        if(!t.solved[i]) $("ans-"+i)?.focus();
+      };
+      el.querySelector('[data-act="check"]').onclick = check;
+      inp.onkeydown = e=>{ if(e.key==="Enter") check(); };
+      el.querySelector('[data-act="hint"]').onclick = ()=>{ touch(t); t.hints[i]=true; render(); };
+    }
+    box.appendChild(el);
+  });
+}
+
+function renderLedger(){
+  const rows = state.teams.map((t,i)=>({t,i,n:t.solved.filter(Boolean).length,s:elapsed(t)}))
+    .sort((a,b)=> (b.t.opened-a.t.opened) || (b.n-a.n) || (a.s-b.s));
+  $("ledger").innerHTML = "";
+  rows.forEach((r,k)=>{
+    const tr = document.createElement("tr");
+    if(k===0 && (r.n>0||r.t.opened)) tr.className="lead";
+    tr.innerHTML = `<td></td><td class="num">${r.n}/5</td><td class="num">${r.t.wrong}</td><td class="num">${r.t.hints.filter(Boolean).length}</td><td class="num">${fmt(r.s)}</td><td><span class="pill ${r.t.opened?"open":""}">${r.t.opened?"ашық":"жабық"}</span></td>`;
+    tr.firstChild.textContent = r.t.name;
+    $("ledger").appendChild(tr);
+  });
+}
+
+function renderClock(){
+  const t = state.teams[state.active];
+  $("clock").textContent = fmt(elapsed(t));
+  $("clock-label").textContent = t.opened ? t.name+" · аяқтады" : t.start ? t.name+" · жүріп жатыр" : t.name+" · басталмаған";
+}
+
+function render(){ renderTabs(); renderSafe(); renderStations(); renderLedger(); renderClock(); }
+
+function setTeams(n){
+  n = Math.max(2,Math.min(5,n));
+  while(state.teams.length<n) state.teams.push(newTeam(state.teams.length));
+  state.teams.length = n;
+  if(state.active>=n) state.active=0;
+  render();
+}
+
+let armed = false;
+function start(data){
+  state = (data && data.state) || fresh(4);
+  $("team-minus").onclick = ()=>setTeams(state.teams.length-1);
+  $("team-plus").onclick = ()=>setTeams(state.teams.length+1);
+  $("btn-reset").onclick = ()=>{ if(armed){ state = fresh(state.teams.length); armed=false; $("btn-reset").textContent="Жаңа ойын"; render(); } else { armed=true; $("btn-reset").textContent="Растау: бәрін өшіру"; setTimeout(()=>{armed=false;$("btn-reset").textContent="Жаңа ойын";},3000); } };
+  $("team-name").oninput = e=>{ const t=state.teams[state.active]; t.name = e.target.value || (state.active+1)+"-топ"; renderTabs(); renderLedger(); renderClock(); };
+  clearInterval(tick); tick = setInterval(()=>{ renderClock(); renderLedger(); },1000);
+  window.claude?.hot?.snapshot?.(()=>({state}));
+  render();
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+</body>
+</html>

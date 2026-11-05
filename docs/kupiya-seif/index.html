@@ -116,7 +116,6 @@ tr.lead td:first-child{color:var(--brass);font-weight:600}
 .pill{font-family:var(--f-mono);font-size:12px;border-radius:999px;padding:2px 8px;border:1px solid var(--rivet);color:var(--muted)}
 .pill.open{border-color:var(--ok);color:var(--ok)}
 .note{color:var(--muted);font-size:14px;margin:10px 0 0}
-.credits a{color:var(--brass)}
 body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
 body[data-stage="3"]{--brass:#c4a0ff;--brass-soft:#6d4fa8}
 .stage-tag{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--brass);color:var(--brass);border-radius:999px;padding:3px 12px}
@@ -383,7 +382,6 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
       <thead><tr><th>Топ</th><th>Кезең</th><th>Станция</th><th>Қате</th><th>Кеңес</th><th>Уақыт (айыппен)</th><th>Сейф</th></tr></thead>
       <tbody id="ledger"></tbody>
     </table></div>
-    <p class="note credits">3D модельдер: <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) және <a href="https://3moji.org" target="_blank" rel="noopener">3moji</a>, Jeremy Toys (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>). 3D қозғалтқыш: three.js (MIT).</p>
     <p class="note">Әр топтың уақыты бірінші жауабынан басталады. Бір компьютерде топтарды жоғарыдағы батырмалармен ауыстырыңыз, немесе әр топ өз құрылғысында ойнай алады.</p>
   </section>
 </div>
@@ -409,7 +407,6 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
 </div>
 
 <script src="vendor/three.min.js" defer></script>
-<script src="vendor/GLTFLoader.js" defer></script>
 <script>
 const STAGES = [
   [
@@ -935,7 +932,6 @@ function glowTexture(){
 }
 function disposeScene(sc){
   sc.traverse(o=>{
-    if(o.userData.cached) return;            // интернеттен жүктелген модельдер қайта қолданылады
     if(o.geometry) o.geometry.dispose();
     if(o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); });
   });
@@ -1154,86 +1150,12 @@ function animateRig(rig, m, t, landT){
   rig.yaw.scale.set(1, 1 + Math.sin(t*3)*.015, 1);
 }
 
-/* ---- интернеттен алынған 3D модельдер ----
-   Quaternius — «Animated Animal Pack» (CC0): қасқыр, түлкі, жылқы, бұғы (сүйекті анимациясы бар)
-   3moji — Jeremy Toys (CC BY-SA 4.0): ілбіс, бүркіт, үкі, дельфин, тасбақа, түйе, айдаһар басы */
-const MODEL_FILES = {"🐺":"wolf","🦊":"fox","🐎":"horse","🦌":"stag","🐆":"leopard","🦅":"eagle","🦉":"owl","🐬":"dolphin","🐢":"turtle","🐫":"two_hump_camel"};
-const RIGGED = {wolf:1, fox:1, horse:1, stag:1};
-const MODEL_CACHE = {}, MODEL_READY = {};
-function loadModel(name){
-  if(!window.THREE || !THREE.GLTFLoader) return Promise.reject(new Error("no loader"));
-  return MODEL_CACHE[name] || (MODEL_CACHE[name] = new Promise((res, rej)=>new THREE.GLTFLoader().load("models/" + name + ".glb", res, null, rej))
-    .then(g=>{ g.scene.traverse(o=>{ o.userData.cached = true; if(o.isMesh){ o.castShadow = true; o.frustumCulled = false; } }); MODEL_READY[name] = g; return g; }));
-}
-const modelNameFor = t => isDragon(t.name) ? "dragon_face" : MODEL_FILES[avOf(t)];
-function preloadModels(){
-  if(!window.THREE || !THREE.GLTFLoader || !state) return;
-  state.teams.forEach(t=>{ const n = modelNameFor(t); if(n) loadModel(n).catch(()=>{}); });
-}
-function fitModel(obj, target, byLength){
-  obj.position.set(0,0,0); obj.rotation.set(0,0,0); obj.scale.set(1,1,1); obj.updateMatrixWorld(true);
-  const b = new THREE.Box3().setFromObject(obj), s = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
-  const k = target / (byLength ? Math.max(s.x, s.z) : Math.max(s.x, s.y, s.z));
-  obj.scale.setScalar(k); obj.position.set(-c.x*k, -b.min.y*k, -c.z*k);
-  return {height: s.y*k, length: Math.max(s.x, s.z)*k};
-}
-// әр кейіпкер үшін бірдей «актер» интерфейсі: root, yaw, head, height, yawMove, yawRest, animate(m, t)
-function rigActor(rig){
-  return {root: rig.root, yaw: rig.yaw, head: rig.head, height: rig.height, necks: rig.necks, yawMove: Math.PI/2, yawRest: 0,
-          animate: (m, t)=>animateRig(rig, m, t), procedural: true};
-}
-const STATIC_SIZE = {leopard:2.3, eagle:1.9, owl:1.7, dolphin:1.9, turtle:1.8, two_hump_camel:2.3};
+// әр кейіпкер үшін бірдей «актер» интерфейсі
 function makeActor(body, kind, dragonTeam){
-  if(dragonTeam){
-    const rig = makeRig(ANIMALS["🐉"]), g = MODEL_READY.dragon_face;
-    if(g) rig.necks.forEach(({head}, k)=>{
-      head.children.slice().forEach(ch=>{ ch.visible = false; });
-      const face = g.scene.clone(true); fitModel(face, .62, false); face.position.y -= .3;
-      const turn = new THREE.Group(); turn.rotation.y = k < 2 ? 0 : k === 2 ? Math.PI/2 : Math.PI; turn.add(face); head.add(turn);
-      const dir = new THREE.Vector3(-1,0,0).applyAxisAngle(new THREE.Vector3(0,1,0), turn.rotation.y);
-      head.userData.dir = dir; head.userData.mouth = dir.clone().multiplyScalar(.3).add(new THREE.Vector3(0,-.07,0));
-      rig.eyes = rig.eyes.filter(e=>!head.children.includes(e));
-    });
-    return rigActor(rig);
-  }
-  const name = MODEL_FILES[body], g = name && MODEL_READY[name];
-  if(!g) return rigActor(makeRig(ANIMALS[body] || ANIMALS["🐆"]));
-  const root = new THREE.Group(), yaw = new THREE.Group(), spin = new THREE.Group(); root.add(yaw); yaw.add(spin);
-  const obj = g.scene; spin.add(obj);
-  const head = new THREE.Object3D(); yaw.add(head);
-  if(RIGGED[name]){
-    const dim = fitModel(obj, name === "horse" || name === "stag" ? 2.5 : 2.8, true);
-    head.position.set(0, dim.height*.82, dim.length*.42);
-    const mixer = new THREE.AnimationMixer(obj), acts = {};
-    g.animations.forEach(c=>{ acts[c.name] = mixer.clipAction(c); });
-    const pick = (...names)=>names.find(n=>acts[n]);
-    const JUMP = pick("Gallop_Jump"), RUN = pick("Gallop"), WALK = pick("Walk"), IDLE = pick("Idle"), IDLE2 = pick("Idle_2", "Idle_2_HeadLow", "Idle_Headlow");
-    const PARTY = kind === "gallop" ? pick("Attack_Kick", "Idle_2") : kind === "leap" ? pick("Attack_Headbutt", "Idle_2") : kind === "howl" ? pick("Idle_2_HeadLow", "Idle_2") : IDLE2;
-    let cur = null, lastT = null;
-    const play = n=>{ if(!n || n === cur) return; const a = acts[n]; a.reset().fadeIn(.25).play(); if(cur) acts[cur].fadeOut(.25); cur = n; };
-    return {root, yaw, head, height: dim.height, yawMove: Math.PI/2, yawRest: .95,
-      animate(m, t){
-        if(!m.visible) play(IDLE);
-        else if(m.moving) play(m.y > .35 ? JUMP : kind === "sneak" && t < T_IN + m.D*.75 ? WALK : RUN);
-        else play((m.c % 4) < 2.2 ? PARTY : IDLE);
-        const dt = lastT == null ? 0 : Math.max(0, Math.min(.1, t - lastT)); lastT = t; mixer.update(dt);
-      }};
-  }
-  // 3moji: қаңқасы жоқ, денесін бүтіндей қимылдатамыз (секіру, теңселу, айналу)
-  const dim = fitModel(obj, STATIC_SIZE[name] || 2, false);
-  head.position.set(-dim.length*.35, dim.height*.8, 0);
-  return {root, yaw, head, height: dim.height, yawMove: Math.PI, yawRest: 0,
-    animate(m, t){
-      const k = m.moving ? Math.sin(t*14) : 0;
-      spin.rotation.z = m.moving ? k*.07 : Math.sin(t*2.5)*.04;
-      spin.position.y = m.moving ? Math.abs(k)*.08 : 0;
-      // үкі мен тасбақа қуанғанда айналады, бүркіт қалықтайды
-      spin.rotation.y = 0;
-      if(m.landed && (name === "owl" || name === "turtle")){ const p = m.c % 2.4; spin.rotation.y = p < .8 ? (p/.8)*Math.PI*2 : 0; }
-      if(m.landed && name === "eagle") spin.rotation.z = Math.sin(t*6)*.12;
-    }};
+  const rig = makeRig(ANIMALS[dragonTeam ? "🐉" : body] || ANIMALS["🐆"]);
+  return {root: rig.root, yaw: rig.yaw, head: rig.head, height: rig.height, necks: rig.necks, yawMove: Math.PI/2, yawRest: 0,
+          animate: (m, t)=>animateRig(rig, m, t)};
 }
-
 function scene3d(avatar, place, teamColor, still, dragon){
   if(!window.THREE) return false;
   const body = dragon ? "🐉" : avatar, kind = MOVES[body] || "hop", isHydra = kind === "dragon";
@@ -1255,11 +1177,11 @@ function scene3d(avatar, place, teamColor, still, dragon){
   const gold = cssVar(win,"--medal") || "#f4c542", hi = cssVar(win,"--medal-hi") || "#ffe38a", lo = cssVar(win,"--medal-lo") || "#a8761c";
   const scene = new THREE.Scene(); r3.scene = scene;
   const cam = new THREE.PerspectiveCamera(32, W/H, .1, 100);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, .78));
-  const sun = new THREE.DirectionalLight(0xffffff, .85); sun.position.set(3,8,6); sun.castShadow = true;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x223344, .8));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(3,8,6); sun.castShadow = true;
   sun.shadow.mapSize.set(1024,1024); Object.assign(sun.shadow.camera, {left:-5,right:4,top:5,bottom:-3,near:1,far:25});
   scene.add(sun);
-  const rim = new THREE.DirectionalLight(C(hi), .35); rim.position.set(-5,4,-4); scene.add(rim);
+  const rim = new THREE.DirectionalLight(C(hi), .7); rim.position.set(-5,4,-4); scene.add(rim);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(6,48), new THREE.ShadowMaterial({opacity:.35}));
   floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
   const mat = (c, m=0, r=.6, extra={})=>new THREE.MeshStandardMaterial(Object.assign({color:C(c), metalness:m, roughness:r}, extra));
@@ -1767,7 +1689,7 @@ function renderRoute(){
   });
 }
 
-function render(){ renderTabs(); renderRoute(); renderSafe(); renderStations(); renderLedger(); renderClock(); saveState(); preloadModels(); }
+function render(){ renderTabs(); renderRoute(); renderSafe(); renderStations(); renderLedger(); renderClock(); saveState(); }
 
 function setTeams(n){
   n = Math.max(2,Math.min(5,n));
@@ -1894,7 +1816,6 @@ function start(){
   render(); pollRemote();
 }
 start();
-window.addEventListener("load", preloadModels);
 </script>
 </body>
 </html>

@@ -349,6 +349,7 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
     <canvas id="win-canvas" aria-hidden="true"></canvas>
     <div class="win-rays" aria-hidden="true"></div>
     <div class="win-card">
+      <canvas class="pxscene" id="win-3d" aria-hidden="true" hidden></canvas>
       <canvas class="pxscene" id="win-px" width="384" height="360" aria-hidden="true"></canvas>
       <div class="win-place" id="win-place">1-орын!</div>
       <div class="win-team" id="win-team"></div>
@@ -404,6 +405,7 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" async></script>
 <script>
 const STAGES = [
   [
@@ -752,6 +754,171 @@ function pixelScene(avatar, reward, place, teamColor, still, dragon){
   pxRAF = requestAnimationFrame(draw);
 }
 
+/* ---- 3D жеңіс сахнасы (three.js). WebGL болмаса, 2D сахна көрсетіледі ---- */
+let r3 = null;
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+function emojiTexture(ch){
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const x = c.getContext("2d"); x.textAlign = "center"; x.textBaseline = "middle";
+  x.font = `210px ${EMOJI_FONT}`; x.fillText(ch, 128, 140);
+  return new THREE.CanvasTexture(c);
+}
+function plateTexture(str, w, h, c1, c2, c3, round){
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d");
+  const g = x.createLinearGradient(0,0,0,h); g.addColorStop(0,c1); g.addColorStop(.5,c2); g.addColorStop(1,c3);
+  x.fillStyle = g;
+  if(round){ x.beginPath(); x.arc(w/2,h/2,w/2,0,7); x.fill(); x.strokeStyle = "rgba(0,0,0,.25)"; x.lineWidth = 10; x.beginPath(); x.arc(w/2,h/2,w/2-22,0,7); x.stroke(); }
+  else x.fillRect(0,0,w,h);
+  x.fillStyle = "rgba(40,25,5,.88)"; x.textAlign = "center"; x.textBaseline = "middle";
+  x.font = `700 ${Math.round(h*.68)}px ${cssVar(document.documentElement,"--f-display") || "sans-serif"}`;
+  x.fillText(str, w/2, h/2 + h*.04);
+  return new THREE.CanvasTexture(c);
+}
+function glowTexture(){
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d"), g = x.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,"rgba(255,255,255,1)"); g.addColorStop(.35,"rgba(255,255,255,.6)"); g.addColorStop(1,"rgba(255,255,255,0)");
+  x.fillStyle = g; x.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+}
+function disposeScene(sc){
+  sc.traverse(o=>{
+    if(o.geometry) o.geometry.dispose();
+    if(o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m=>{ if(m.map) m.map.dispose(); m.dispose(); });
+  });
+}
+function scene3d(avatar, place, teamColor, still, dragon){
+  if(!window.THREE) return false;
+  const cv = $("win-3d");
+  try{
+    if(!r3){
+      const renderer = new THREE.WebGLRenderer({canvas:cv, alpha:true, antialias:true});
+      renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      r3 = {renderer, raf:0, scene:null};
+    }
+  }catch(e){ return false; }
+  cancelAnimationFrame(r3.raf);
+  if(r3.scene) disposeScene(r3.scene);
+  cv.hidden = false; $("win-px").hidden = true;
+  const R = r3.renderer, win = $("win"), C = c=>new THREE.Color(c);
+  const W = cv.clientWidth || 320, H = cv.clientHeight || 300;
+  R.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); R.setSize(W, H, false);
+  const gold = cssVar(win,"--medal") || "#f4c542", hi = cssVar(win,"--medal-hi") || "#ffe38a", lo = cssVar(win,"--medal-lo") || "#a8761c";
+  const shirt = resolveColor(teamColor) || "#f2c14e";
+  const scene = new THREE.Scene(); r3.scene = scene;
+  const cam = new THREE.PerspectiveCamera(32, W/H, .1, 100);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x223344, .8));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(3,8,6); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024,1024); Object.assign(sun.shadow.camera, {left:-4,right:4,top:5,bottom:-3,near:1,far:25});
+  scene.add(sun);
+  const rim = new THREE.DirectionalLight(C(hi), .7); rim.position.set(-5,4,-4); scene.add(rim);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(5,48), new THREE.ShadowMaterial({opacity:.35}));
+  floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+  const mat = (c, m=0, r=.6, extra={})=>new THREE.MeshStandardMaterial(Object.assign({color:C(c), metalness:m, roughness:r}, extra));
+  const add = (parent, geo, m, x=0, y=0, z=0)=>{ const o = new THREE.Mesh(geo, m); o.position.set(x,y,z); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o; };
+  // тұғыр
+  const ph = place===1 ? 1.25 : place===2 ? 1.0 : place===3 ? .8 : .65;
+  const metal = mat(gold, .55, .32);
+  const front = new THREE.MeshStandardMaterial({map:plateTexture(String(place), 440, Math.round(440*ph/2.2), hi, gold, lo), metalness:.35, roughness:.4});
+  const pod = add(scene, new THREE.BoxGeometry(2.2, ph, 1.5), [metal,metal,metal,metal,front,metal]);
+  // кейіпкер
+  const hero = new THREE.Group(); scene.add(hero);
+  const shirtM = mat(shirt, .05, .5), pantsM = mat("#2b3442", 0, .7), skinM = mat("#f1c08f", 0, .65), shoeM = mat("#151a22", .1, .5);
+  const legs = [-.16,.16].map(x=>{ const g = new THREE.Group(); g.position.set(x,.74,0); hero.add(g);
+    add(g, new THREE.CylinderGeometry(.1,.09,.66,16), pantsM, 0,-.33,0); add(g, new THREE.BoxGeometry(.2,.11,.34), shoeM, 0,-.68,.06); return g; });
+  add(hero, new THREE.CylinderGeometry(.3,.34,.74,24), shirtM, 0,1.1,0);
+  add(hero, new THREE.SphereGeometry(.31,24,16), shirtM, 0,1.45,0).scale.set(1,.45,1);
+  add(hero, new THREE.CylinderGeometry(.09,.1,.16,12), skinM, 0,1.58,0);
+  const arms = [-1,1].map(side=>{ const g = new THREE.Group(); g.position.set(side*.4,1.44,0); hero.add(g);
+    add(g, new THREE.CylinderGeometry(.08,.075,.7,14), shirtM, 0,-.35,0); add(g, new THREE.SphereGeometry(.1,16,12), skinM, 0,-.74,0); return g; });
+  const head = new THREE.Sprite(new THREE.SpriteMaterial({map:emojiTexture(avatar), transparent:true}));
+  head.scale.set(1.1,1.1,1); head.position.set(0,2.02,0); hero.add(head);
+  // марапат
+  const reward = new THREE.Group(); reward.visible = false; scene.add(reward);
+  if(place===1){
+    const pts = [[0,0],[.26,0],[.26,.06],[.08,.1],[.06,.3],[.1,.36],[.3,.5],[.34,.8],[.31,.82],[.27,.56],[0,.44]].map(([x,y])=>new THREE.Vector2(x,y));
+    const gm = mat("#f4c542", .95, .2, {emissive:C("#4a3300"), side:THREE.DoubleSide});
+    add(reward, new THREE.LatheGeometry(pts, 48), gm);
+    [-1,1].forEach(sd=>{ const hdl = add(reward, new THREE.TorusGeometry(.14,.032,10,28,Math.PI), gm, sd*.32,.62,0); hdl.rotation.z = sd>0 ? -Math.PI/2 : Math.PI/2; });
+    add(reward, new THREE.BoxGeometry(.46,.12,.46), mat("#5a3d12", .2, .5), 0,-.05,0);
+  } else if(place===2 || place===3){
+    const col = place===2 ? "#d9e0e6" : "#cf8a4f", dark = place===2 ? "#8c99a3" : "#7d4a22";
+    const mm = mat(col, .9, .25);
+    const faceTex = plateTexture(String(place), 256, 256, "#ffffff", col, dark, true);
+    const face = new THREE.MeshStandardMaterial({map:faceTex, metalness:.6, roughness:.3, transparent:true});
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.07,48), [mm, face, mm]);
+    disc.rotation.x = Math.PI/2; disc.position.y = .4; disc.castShadow = true; reward.add(disc);
+    faceTex.center.set(.5,.5); faceTex.rotation = Math.PI/2;
+    [[-1,"#2f6fe0"],[1,"#e0433a"]].forEach(([sd,c])=>{ const rb = add(reward, new THREE.BoxGeometry(.13,.55,.02), mat(c,0,.6), sd*.12,.98,-.02); rb.rotation.z = -sd*.32; });
+  } else {
+    const sh = new THREE.Shape();
+    for(let i=0;i<10;i++){ const a = Math.PI/2 + i*Math.PI/5, r = i%2 ? .19 : .45; const x = Math.cos(a)*r, y = Math.sin(a)*r; i ? sh.lineTo(x,y) : sh.moveTo(x,y); }
+    const g = new THREE.ExtrudeGeometry(sh, {depth:.1, bevelEnabled:true, bevelThickness:.04, bevelSize:.04, bevelSegments:2}); g.center();
+    add(reward, g, mat("#ffd23f", .4, .35, {emissive:C("#5a4300")}), 0,.45,0);
+  }
+  const glow = new THREE.PointLight(C(hi), 0, 4); reward.add(glow); glow.position.set(0,.5,.6);
+  // ұшқындар мен от бөлшектері
+  const gt = glowTexture();
+  const mkPoints = (n, size, color)=>{ const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n*3),3));
+    const p = new THREE.Points(g, new THREE.PointsMaterial({size, map:gt, color:C(color), transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:.95})); scene.add(p); return p; };
+  const sparks = mkPoints(14, .2, hi); sparks.visible = false;
+  const FN = 70, fire = dragon ? mkPoints(FN, .34, "#ffb030") : null;
+  const fireLife = new Float32Array(FN).map(()=>Math.random());
+  const fireCore = dragon ? mkPoints(FN, .18, "#fff2a0") : null;
+  cam.aspect = W/H; cam.updateProjectionMatrix();
+  const lookY = (ph + 3.9)/2;
+  const t0 = performance.now();
+  const frame = now=>{
+    const t = still ? 9 : (now - t0)/1000;
+    const rise = easeBack(clamp01(t/.55));
+    pod.position.y = ph/2 - (1-rise)*(ph+.4);
+    const wk = clamp01((t-.55)/1.4), walking = t > .55 && t < 1.95;
+    const swing = walking ? Math.sin((t-.55)*11) * .6 : 0;
+    let jump = 0;
+    if(t > 2.55 && t < 7) jump = Math.abs(Math.sin((t-2.55)*5.2)) * .35;
+    hero.visible = t > .5;
+    hero.position.set(lerp(-4.6, 0, easeOut(wk)), ph + jump + (walking ? Math.abs(swing)*.06 : 0), 0);
+    hero.rotation.y = Math.PI/2 * (1 - clamp01((t-1.6)/.45));
+    legs[0].rotation.x = swing; legs[1].rotation.x = -swing;
+    const le = easeBack(clamp01((t-2.05)/.45));
+    arms[0].rotation.set(-swing*.7, 0, lerp(-.12, -(Math.PI + .18), le));
+    arms[1].rotation.set(swing*.7, 0, lerp(.12, Math.PI + .18, le));
+    head.material.rotation = t > 2.55 && t < 7 ? Math.sin(t*5.2)*.06 : 0;
+    reward.visible = t > 2.05;
+    reward.position.set(hero.position.x, hero.position.y + lerp(1.0, 2.52, le), lerp(.45, 0, le));
+    reward.rotation.y = place===1 ? (t-2.05)*1.3 : place<=3 ? Math.sin(t*2)*.45 : t*1.6;
+    glow.intensity = t > 2.4 ? 1.1 + Math.sin(t*4)*.4 : 0;
+    // ұшқындар
+    sparks.visible = t > 2.45;
+    const sp = sparks.geometry.attributes.position;
+    for(let i=0;i<sp.count;i++){ const a = t*1.4 + i*Math.PI*2/sp.count, r = .7 + Math.sin(t*3+i)*.12;
+      sp.setXYZ(i, reward.position.x + Math.cos(a)*r, reward.position.y + .45 + Math.sin(t*2+i*1.7)*.3, reward.position.z + Math.sin(a)*r); }
+    sp.needsUpdate = true;
+    // айдаһар оты
+    if(fire){
+      const on = t > 2.5, fp = fire.geometry.attributes.position, cp = fireCore.geometry.attributes.position;
+      fire.visible = fireCore.visible = on;
+      const mx = hero.position.x + .38, my = hero.position.y + 1.95, mz = .3;
+      for(let i=0;i<FN;i++){
+        fireLife[i] += .022 + (i%5)*.002; if(fireLife[i] > 1) fireLife[i] -= 1;
+        const q = fireLife[i], spread = q*.35;
+        const x = mx + q*2.2, y = my + Math.sin(i*12.9 + t*9)*spread + q*.15, z = mz + q*.9 + Math.cos(i*7.1 + t*7)*spread;
+        fp.setXYZ(i, x, y, z); cp.setXYZ(i, x - .05, y, z);
+      }
+      fp.needsUpdate = cp.needsUpdate = true;
+      fire.material.opacity = .85 + Math.sin(t*30)*.1;
+    }
+    const ang = Math.sin(t*.35) * .45;
+    cam.position.set(Math.sin(ang)*10.2, lookY + 1.1, Math.cos(ang)*10.2);
+    cam.lookAt(0, lookY, 0);
+    R.render(scene, cam);
+    if(!still && !win.hidden) r3.raf = requestAnimationFrame(frame);
+  };
+  try{ frame(performance.now()); }catch(e){ console.warn(e); return false; }
+  return true;
+}
+
 /* ---- жеңіс анимациясы: орынға қарай ---- */
 let winRAF = null;
 function standings(){
@@ -811,13 +978,17 @@ async function showWin(t, fresh){
     li.innerHTML = `<span></span><b>${fmt(x.s)}</b>`; li.firstChild.textContent = (k+1) + ". " + x.name + (x.me ? " (сіз)" : ""); rank.appendChild(li); });
   rank.hidden = list.length < 2;
   w.hidden = false;
-  $("win-close").onclick = ()=>{ w.hidden = true; cancelAnimationFrame(winRAF); };
+  $("win-close").onclick = ()=>{ w.hidden = true; cancelAnimationFrame(winRAF); if(r3) cancelAnimationFrame(r3.raf); };
   setTimeout(()=>$("win-close").focus(), 3500);
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   clearTimeout(window.__winT1); clearTimeout(window.__winT2);
   if(!still) for(let k=0;k<5;k++) setTimeout(()=>tone(180 + (k%2)*40, .05, "square", .05), 600 + k*280);
   window.__winT1 = setTimeout(()=>{ if(!w.hidden && !still) confetti(place<=3 ? place : "n"); }, still ? 0 : 2100);
-  pixelScene(avOf(t), {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key], place, TEAM_COLORS[(ti < 0 ? 0 : ti) % TEAM_COLORS.length], still, isDragon(t.name));
+  const teamCol = TEAM_COLORS[(ti < 0 ? 0 : ti) % TEAM_COLORS.length];
+  if(!scene3d(avOf(t), place, teamCol, still, isDragon(t.name))){
+    $("win-3d").hidden = true; $("win-px").hidden = false;
+    pixelScene(avOf(t), {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key], place, teamCol, still, isDragon(t.name));
+  }
   window.__winT2 = setTimeout(()=>{ if(!w.hidden) winSound(key==="n" ? "n" : place); }, still ? 0 : 2050);
   if(fresh) report({team:t.name, event:"Қорытынды", task:"Барлық сейф", answer:"", result:place+"-орын", points:fmt(elapsed(t)), total:STAGES.length+"/"+STAGES.length+" сейф"});
 }

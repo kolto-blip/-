@@ -119,6 +119,43 @@ tr.lead td:first-child{color:var(--brass);font-weight:600}
 body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
 .stage-tag{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--brass);color:var(--brass);border-radius:999px;padding:3px 12px}
 .opened .btn{margin-top:10px}
+/* ---- станциялардағы шағын ойындар ---- */
+.mg{display:flex;flex-direction:column;gap:10px}
+.mg-btn{border:1.5px solid #b9a77f;background:#fffaf0;color:var(--paper-ink);border-radius:8px;padding:9px 12px;text-align:left;font-size:15px;line-height:1.3;display:flex;align-items:center;gap:8px;min-width:0}
+.mg-btn:hover:not(:disabled){border-color:var(--paper-ink)}
+.mg-btn.sel{border-color:var(--paper-ink);background:#f1dca6;box-shadow:0 0 0 2px var(--paper-ink) inset}
+.mg-btn.ok,.mg-chip.ok{border-color:#2f7d4f;background:#cfe6d4;color:#1d4d30}
+.mg-btn:disabled{cursor:default}
+.mg-btn.used{opacity:.25}
+.bad{animation:bad .45s ease;border-color:#b23324!important;background:#f5d0c8!important}
+@keyframes bad{0%,100%{transform:none}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+.mg-match{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.mg-col{display:flex;flex-direction:column;gap:8px}
+.mg-col .mg-btn{flex:1}
+.mg-list{display:flex;flex-direction:column;gap:8px}
+.mg-num{flex:none;width:24px;height:24px;border-radius:50%;background:#e3d5b5;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-weight:800;font-size:13px}
+.mg-btn.ok .mg-num{background:#2f7d4f;color:#fff}
+.mg-chips{display:flex;flex-wrap:wrap;gap:8px}
+.mg-bins{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.mg-bin{border:2px dashed #b9a77f;background:#e9dcc0;border-radius:10px;padding:10px;min-height:96px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;color:var(--paper-ink)}
+.mg-bin.ready{border-color:var(--paper-ink);background:#f1e4c6}
+.mg-bin b{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.04em;font-size:15px}
+.mg-in{display:flex;flex-wrap:wrap;gap:6px}
+.mg-chip{border:1.5px solid;border-radius:999px;padding:3px 10px;font-size:13px}
+.mg-tf{display:flex;flex-direction:column;gap:8px}
+.mg-tf-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#f5ecd8;border-radius:8px;padding:8px 10px;font-size:15px}
+.mg-tf-row>span:first-child{flex:1 1 220px;min-width:0}
+.mg-tf-row.done{background:#dfeedf}
+.mg-tf-btns{display:flex;gap:6px}
+.mg-tf-btns .mg-btn{padding:6px 12px;font-weight:600}
+.mg-slots{display:flex;flex-wrap:wrap;gap:6px}
+.mg-slots span{width:34px;height:40px;border-bottom:3px solid var(--paper-ink);display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-weight:800;font-size:22px;background:#fffaf0;border-radius:6px 6px 0 0}
+.mg-slots.bad span{border-color:#b23324}
+.mg-tiles{display:flex;flex-wrap:wrap;gap:6px}
+.mg-tiles .mg-btn{width:42px;height:44px;justify-content:center;font-family:var(--f-mono);font-weight:800;font-size:20px;padding:0}
+.mg-ctl{display:flex;gap:8px}
+.mg-ctl .mg-btn{font-size:14px;padding:6px 12px}
+@media (max-width:520px){.mg-match{gap:6px}.mg-match .mg-btn{font-size:13px;padding:8px}.mg-slots span{width:26px;height:34px;font-size:18px}.mg-tiles .mg-btn{width:36px;height:40px;font-size:18px}}
 /* ---- сейфке апаратын жол ---- */
 :root{--t1:#f2c14e;--t2:#4fc3d9;--t3:#ff7f6e;--t4:#b18cff;--t5:#8bd66b}
 .route{position:relative;background:linear-gradient(180deg,var(--steel-2),var(--steel));border:1.5px solid var(--rivet);border-radius:16px;height:230px;overflow:hidden}
@@ -194,7 +231,7 @@ body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
     <div>
       <div class="eyebrow">Пәнаралық квест · 2 кезең · 10 станция</div>
       <h1>Құпия сейф</h1>
-      <p class="lede">Жол бойындағы әр станцияда екі пән біріктірілген тапсырма бар, станциялар ретімен ашылады. Дұрыс жауап сейф кодының бір цифрын ашады. Бес цифрды жинап, бірінші сейфті ашқан топ 2-кезеңге өтеді. Екі сейфті де ең аз уақытта ашқан топ жеңеді. Қате жауап +30 с, кеңес +60 с айып қосады.</p>
+      <p class="lede">Жол бойындағы әр станция бөлек ойын: жұбын табу, ретімен қою, топқа бөлу, «дұрыс па, қате ме?» және сөз құрау. Әр ойында екі пән біріктірілген. Станциялар ретімен ашылады, ал орындалған әр станция сейф кодының бір цифрын береді. Бес цифрды жинап, бірінші сейфті ашқан топ 2-кезеңге өтеді. Екі сейфті де ең аз уақытта ашқан топ жеңеді. Әр қате әрекетке +30 с, кеңеске +60 с айып қосылады.</p>
     </div>
     <div class="hdr-right">
       <div class="clock" aria-live="off"><small id="clock-label">Уақыт</small><span id="clock">00:00</span></div>
@@ -259,50 +296,62 @@ body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
 
 <script>
 const STAGES = [
-[
-  { subj:"Қазақ тілі + Математика",
-    task:"Мақалды толықтырыңыз: «Жігітке ___ өнер аз». Жетіспейтін сан есімді цифрмен жазып, оны 3-ке көбейтіңіз де, 14-ті азайтыңыз. Жауабы қандай сан?",
-    hint:"Мақалда «жеті» деген сан есім бар: 7 · 3 − 14 = ?",
-    ans:["7","жеті"], note:"«Жігітке жеті өнер аз»: 7 · 3 − 14 = 7." },
-  { subj:"География + Математика",
-    task:"Қазақстан құрлықта неше мемлекетпен шектеседі? Сол санды 3-ке көбейтіңіз. Жауабы қандай сан?",
-    hint:"Көршілерді санаңыз: Ресей, Қытай, Қырғызстан, Өзбекстан, Түрікменстан. Шыққан санды 3-ке көбейтіңіз.",
-    ans:["15","он бес","онбес"], note:"Көрші мемлекет 5: Ресей, Қытай, Қырғызстан, Өзбекстан, Түрікменстан. 5 · 3 = 15." },
-  { subj:"Химия + Физика",
-    task:"Мұз жылынғанда суға айналады. Заттың қатты күйден сұйық күйге өтуі қалай аталады? Бір сөзбен жазыңыз.",
-    hint:"Бұл физикалық құбылыс, заттың құрамы өзгермейді. Сөз «б» әрпінен басталады.",
-    ans:["балқу","балку"], note:"Балқу. Су молекуласы (H₂O) өзгермейді, тек агрегаттық күй өзгереді." },
-  { subj:"Биология + Математика",
-    task:"Тыныштық күйдегі адамның жүрегі минутына шамамен 70 рет соғады. Бір сағатта неше рет соғады?",
-    hint:"1 сағат = 60 минут. 70 · 60 = ?",
-    ans:["4200"], note:"70 · 60 = 4200 рет." },
-  { subj:"Информатика + Тарих",
-    task:"Қазақ хандығы құрылған жыл екілік санау жүйесінде 10110111001₂ болып жазылады. Оны ондық жүйеге аударыңыз.",
-    hint:"Разряд мәндері: 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1. Бірліктер тұрған разрядтарды қосыңыз.",
-    ans:["1465"], note:"1024 + 256 + 128 + 32 + 16 + 8 + 1 = 1465 жыл." }
-],
-[
-  { subj:"Тарих + Математика",
-    task:"Абай Құнанбайұлы 1845 жылы туған. 2025 жылы оның туғанына неше жыл толды?",
-    hint:"Кейінгі жылдан бұрынғы жылды азайтыңыз: 2025 − 1845 = ?",
-    ans:["180"], note:"2025 − 1845 = 180 жыл. 2025 жылы Абайдың 180 жылдығы атап өтілді." },
-  { subj:"Химия + Математика",
-    task:"Су молекуласының (H₂O) салыстырмалы молекулалық массасын есептеңіз. Ar(H) = 1, Ar(O) = 16.",
-    hint:"Молекулада 2 сутек және 1 оттегі атомы бар: 2 · 1 + 16 = ?",
-    ans:["18"], note:"Mr(H₂O) = 2 · 1 + 16 = 18." },
-  { subj:"География + Биология",
-    task:"Іле Алатауы мен Жоңғар Алатауының биік тауларында мекендейтін, Қызыл кітапқа енген мысық тұқымдас жыртқыш аң қалай аталады?",
-    hint:"Оның тағы бір атауы «барыс». Ол Алматы қаласының елтаңбасында бейнеленген.",
-    ans:["ілбіс","барыс","қар барысы"], note:"Ілбіс (барыс, қар барысы) теңіз деңгейінен 2000–4000 м биіктікте мекендейді." },
-  { subj:"Физика + География",
-    task:"Дыбыс ауада шамамен 340 м/с жылдамдықпен тарайды. Найзағай жарқылын көргеннен кейін 3 секундтан соң күн күркіреді. Найзағай неше метр қашықтықта болды?",
-    hint:"Қашықтық = жылдамдық · уақыт: 340 · 3 = ?",
-    ans:["1020","1020м"], note:"S = v · t = 340 · 3 = 1020 м, яғни шамамен 1 км." },
-  { subj:"Әдебиет + Информатика",
-    task:"Абай 45 қара сөз жазған. 45 санын екілік санау жүйесіне аударыңыз.",
-    hint:"45 = 32 + 8 + 4 + 1. Разрядтар: 32, 16, 8, 4, 2, 1. Бар разрядқа 1, жоғына 0 қойыңыз.",
-    ans:["101101"], note:"45 = 32 + 8 + 4 + 1, сондықтан 101101₂." }
-]
+  [
+    { type:"match", subj:"Химия + Биология",
+      title:"Химиялық элементті оның ағзадағы рөлімен жұптаңыз. Алдымен сол жақтан, содан кейін оң жақтан таңдаңыз.",
+      hint:"Темір қанда, кальций сүйекте болады.",
+      note:"Fe гемоглобинде оттегін тасымалдайды, Ca сүйекті бекітеді, I қалқанша безге қажет, O тыныс алуға керек.",
+      pairs:[["Темір (Fe)","Гемоглобин құрамында, оттегін тасымалдайды"],["Кальций (Ca)","Сүйек пен тістің беріктігі"],["Йод (I)","Қалқанша без гормондары"],["Оттегі (O)","Тыныс алуға қажет газ"]] },
+    { type:"order", subj:"Тарих + Әдебиет",
+      title:"Оқиғаларды уақыт ретімен түртіп шығыңыз: ең ертесінен бастаңыз.",
+      hint:"Ең ертесі XV ғасырда, ең кейінгісі XX ғасырдың соңында болған.",
+      note:"1465 – Қазақ хандығы, 1845 – Абай туды, 1942 – «Абай жолының» 1-кітабы, 1991 – Тәуелсіздік.",
+      items:["Қазақ хандығының құрылуы","Абай Құнанбайұлының дүниеге келуі","«Абай жолы» романының алғашқы кітабы","Қазақстанның Тәуелсіздігі"] },
+    { type:"sort", subj:"Физика + Химия",
+      title:"Құбылыстарды топқа бөліңіз: алдымен құбылысты, содан кейін топты таңдаңыз.",
+      hint:"Химиялық құбылыста жаңа зат пайда болады, физикалықта зат өзгермейді.",
+      note:"Физикалық: еру, қайнау, сыну. Химиялық: тотығу, жану, ашу.",
+      bins:["Физикалық","Химиялық"],
+      items:[["Мұздың еруі",0],["Темірдің тотығуы",1],["Судың қайнауы",0],["Ағаштың жануы",1],["Шыныны сындыру",0],["Сүттің ашуы",1]] },
+    { type:"tf", subj:"География + Математика",
+      title:"Әр тұжырымның дұрыс не қате екенін анықтаңыз.",
+      hint:"Масштаб 1 : 100 000 болса, 1 см = 100 000 см. Метрге, содан кейін километрге аударыңыз.",
+      note:"Қазақстанның ауданы ≈ 2,7 млн км², ал 1 : 100 000 масштабта 1 см = 1 км.",
+      items:[["Қазақстан құрлықта 5 мемлекетпен шектеседі.",true],["Каспий теңізі — әлемдегі ең үлкен көл.",true],["Масштаб 1 : 100 000 болса, картадағы 1 см жердегі 10 км-ге тең.",false],["Қазақстанның ауданы 1 млн км²-ден аз.",false],["Балқаш көлінің бір бөлігі тұщы, бір бөлігі тұзды.",true]] },
+    { type:"anagram", subj:"Қазақ тілі + Информатика",
+      title:"Әріптерден сөз құраңыз: ақпаратты компьютерге енгізетін, пернелері бар құрылғы.",
+      hint:"Сөз «П» әрпінен басталады, ішінде «Қ» әрпі бар.",
+      note:"ПЕРНЕТАҚТА — ақпаратты енгізу құрылғысы. Бұл күрделі сөз: «перне» + «тақта».",
+      word:"ПЕРНЕТАҚТА" }
+  ],
+  [
+    { type:"match", subj:"Физика + Математика",
+      title:"Физикалық шаманы оның формуласымен жұптаңыз.",
+      hint:"Жылдамдық = жол : уақыт. Ом заңы кернеуді байланыстырады.",
+      note:"v = S : t, F = m · g, ρ = m : V, U = I · R.",
+      pairs:[["Жылдамдық","v = S : t"],["Ауырлық күші","F = m · g"],["Тығыздық","ρ = m : V"],["Кернеу","U = I · R"]] },
+    { type:"order", subj:"География + Математика",
+      title:"Шыңдарды биіктігі бойынша кемуі ретімен түртіңіз: ең биігінен бастаңыз.",
+      hint:"Хан Тәңірі 7000 м-ден асады, ал Қазығұрт 2000 м-ге де жетпейді.",
+      note:"Хан Тәңірі 7010 м > Талғар 4979 м > Мұзтау (Белуха) 4506 м > Қазығұрт 1768 м.",
+      items:["Хан Тәңірі","Талғар шыңы","Мұзтау (Белуха)","Қазығұрт"] },
+    { type:"sort", subj:"Информатика + Физика",
+      title:"Құрылғыларды топқа бөліңіз: ақпаратты енгізе ме, әлде шығара ма?",
+      hint:"Микрофон дыбысты электр сигналына айналдырып, компьютерге енгізеді. Колонка керісінше жасайды.",
+      note:"Енгізу: пернетақта, тінтуір, микрофон. Шығару: монитор, принтер, колонка.",
+      bins:["Енгізу","Шығару"],
+      items:[["Пернетақта",0],["Монитор",1],["Тінтуір",0],["Принтер",1],["Микрофон",0],["Колонка",1]] },
+    { type:"tf", subj:"Биология + Химия",
+      title:"Әр тұжырымның дұрыс не қате екенін анықтаңыз.",
+      hint:"Судың формуласында сутектің 2 атомы мен оттегінің 1 атомы бар.",
+      note:"Судың формуласы — H₂O. Адам денесінде массасы бойынша ең көп элемент — оттегі.",
+      items:[["Фотосинтез кезінде өсімдік оттегі бөледі.",true],["Судың формуласы — H₂O₂.",false],["Асқазан сөлінде тұз қышқылы бар.",true],["Адам денесінде массасы бойынша ең көп элемент — темір.",false],["Гемоглобиннің құрамында темір бар.",true]] },
+    { type:"anagram", subj:"Әдебиет + Тарих",
+      title:"Әріптерден тегін құраңыз: Алаш қозғалысының көшбасшысы, «Маса» жинағының авторы Ахмет …",
+      hint:"Тегі «Бай» буынынан басталып, «-ұлы» жұрнағымен аяқталады.",
+      note:"Ахмет БАЙТҰРСЫНҰЛЫ — ақын, ағартушы, қазақ әліпбиінің реформаторы.",
+      word:"БАЙТҰРСЫНҰЛЫ" }
+  ]
 ];
 const WRONG_PEN = 30, HINT_PEN = 60;
 const $ = id => document.getElementById(id);
@@ -352,7 +401,7 @@ const norm = s => s.toLowerCase().trim().replace(/\s+/g,"")
 
 function newStage(st){
   return {code:st.map(()=>Math.floor(Math.random()*10)), solved:st.map(()=>false),
-    hints:st.map(()=>false), msgs:st.map(()=>""), opened:false, lockMsg:""};
+    hints:st.map(()=>false), msgs:st.map(()=>""), prog:st.map(()=>null), opened:false, lockMsg:""};
 }
 function newTeam(i){ return {name:(i+1)+"-топ", stage:0, stages:STAGES.map(newStage), wrong:0, start:null, end:null}; }
 function fresh(n){ return {teams:Array.from({length:n},(_,i)=>newTeam(i)), active:0}; }
@@ -479,52 +528,162 @@ function renderSafe(){
   $("stats").innerHTML = `<div><b>${sg.solved.filter(Boolean).length}/5</b><span>станция</span></div><div><b>${t.wrong}</b><span>қате</span></div><div><b>${hintCount(t)}</b><span>кеңес</span></div>`;
 }
 
+const TYPE_LABEL = {match:"Жұбын тап", order:"Ретімен қой", sort:"Топқа бөл", tf:"Дұрыс па, қате ме?", anagram:"Сөз құра"};
+let badKey = null;
+function shuffle(n, notIdentity){
+  let a;
+  do { a = [...Array(n).keys()]; for(let k=n-1;k>0;k--){ const j=Math.floor(Math.random()*(k+1)); [a[k],a[j]]=[a[j],a[k]]; } }
+  while(notIdentity && n>1 && a.every((v,k)=>v===k));
+  return a;
+}
+const taskName = (t,i,s) => stageLabel(t)+" · "+(i+1)+"-станция · "+s.subj;
+function mistake(t, sg, i, s, detail){
+  touch(t); t.wrong++;
+  sg.msgs[i] = "Қате! +30 с айып. Тағы байқап көріңіз.";
+  report({team:t.name, event:"Жауап", task:taskName(t,i,s), answer:detail, result:"қате", points:fmt(elapsed(t)), total:stageLabel(t)+" "+sg.solved.filter(Boolean).length+"/5"});
+}
+function solve(t, sg, i, s){
+  touch(t); sg.solved[i] = true; sg.msgs[i] = ""; justSolved = i;
+  report({team:t.name, event:"Жауап", task:taskName(t,i,s), answer:TYPE_LABEL[s.type]+" орындалды", result:"дұрыс", points:fmt(elapsed(t)), total:stageLabel(t)+" "+sg.solved.filter(Boolean).length+"/5"});
+}
+function mgBtn(text, cls, key, onClick){
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "mg-btn " + (cls||"") + (badKey===key ? " bad" : "");
+  b.textContent = text; b.dataset.key = key;
+  if(onClick) b.onclick = onClick; else b.disabled = true;
+  return b;
+}
+function buildGame(area, t, sg, i, s){
+  const tap = fn => ()=>{ touch(t); sg.msgs[i] = ""; fn(); render(); };
+  if(s.type === "match"){
+    const n = s.pairs.length, p = sg.prog[i] = sg.prog[i] || {lp:shuffle(n), rp:shuffle(n), done:[], sel:null};
+    const grid = document.createElement("div"); grid.className = "mg-match";
+    const col = side => { const c = document.createElement("div"); c.className = "mg-col";
+      (side==="L"?p.lp:p.rp).forEach(k=>{
+        const done = p.done.includes(k), sel = p.sel && p.sel.side===side && p.sel.k===k;
+        c.appendChild(mgBtn(s.pairs[k][side==="L"?0:1], done?"ok":sel?"sel":"", i+":"+side+k, done?null:tap(()=>{
+          if(!p.sel || p.sel.side===side){ p.sel = {side,k}; return; }
+          const other = p.sel; p.sel = null;
+          if(other.k === k){ p.done.push(k); if(p.done.length===n) solve(t,sg,i,s); }
+          else { badKey = i+":"+side+k; const L = side==="L"?k:other.k, R = side==="L"?other.k:k; mistake(t,sg,i,s, s.pairs[L][0]+" ↔ "+s.pairs[R][1]); }
+        })));
+      }); return c; };
+    grid.append(col("L"), col("R")); area.appendChild(grid);
+  }
+  if(s.type === "order"){
+    const n = s.items.length, p = sg.prog[i] = sg.prog[i] || {perm:shuffle(n,true), next:0};
+    const list = document.createElement("div"); list.className = "mg-list";
+    p.perm.forEach(k=>{
+      const done = k < p.next;
+      const b = mgBtn(s.items[k], done?"ok":"", i+":o"+k, done?null:tap(()=>{
+        if(k === p.next){ p.next++; if(p.next===n) solve(t,sg,i,s); }
+        else { badKey = i+":o"+k; mistake(t,sg,i,s, s.items[k]+" (" + (p.next+1) + "-орынға)"); }
+      }));
+      const num = document.createElement("span"); num.className = "mg-num"; num.textContent = done ? (k+1) : "·";
+      b.prepend(num); list.appendChild(b);
+    });
+    area.appendChild(list);
+  }
+  if(s.type === "sort"){
+    const n = s.items.length, p = sg.prog[i] = sg.prog[i] || {perm:shuffle(n), placed:{}, sel:null};
+    const chips = document.createElement("div"); chips.className = "mg-chips";
+    p.perm.filter(k=>p.placed[k]===undefined).forEach(k=>{
+      chips.appendChild(mgBtn(s.items[k][0], p.sel===k?"sel":"", i+":c"+k, tap(()=>{ p.sel = (p.sel===k ? null : k); })));
+    });
+    if(!chips.children.length) chips.hidden = true;
+    const bins = document.createElement("div"); bins.className = "mg-bins";
+    s.bins.forEach((name,bi)=>{
+      const bin = document.createElement("button"); bin.type = "button";
+      bin.className = "mg-bin" + (badKey===i+":b"+bi ? " bad":"") + (p.sel!==null ? " ready":"");
+      bin.dataset.key = i+":b"+bi;
+      bin.innerHTML = `<b></b><span class="mg-in"></span>`; bin.firstChild.textContent = name;
+      Object.keys(p.placed).filter(k=>p.placed[k]===bi).forEach(k=>{ const c=document.createElement("span"); c.className="mg-chip ok"; c.textContent=s.items[k][0]; bin.lastChild.appendChild(c); });
+      bin.onclick = tap(()=>{
+        if(p.sel===null){ sg.msgs[i] = "Алдымен жоғарыдан бір құбылысты таңдаңыз."; return; }
+        const k = p.sel; p.sel = null;
+        if(s.items[k][1] === bi){ p.placed[k] = bi; if(Object.keys(p.placed).length===n) solve(t,sg,i,s); }
+        else { badKey = i+":b"+bi; mistake(t,sg,i,s, s.items[k][0]+" → "+name); }
+      });
+      bins.appendChild(bin);
+    });
+    area.append(chips, bins);
+  }
+  if(s.type === "tf"){
+    const p = sg.prog[i] = sg.prog[i] || {ok:[]};
+    const list = document.createElement("div"); list.className = "mg-tf";
+    s.items.forEach(([text,val],k)=>{
+      const row = document.createElement("div"); row.className = "mg-tf-row" + (p.ok.includes(k) ? " done":"");
+      const q = document.createElement("span"); q.textContent = text; row.appendChild(q);
+      const btns = document.createElement("span"); btns.className = "mg-tf-btns";
+      [[true,"Дұрыс"],[false,"Қате"]].forEach(([v,label])=>{
+        const done = p.ok.includes(k);
+        if(done && v!==val) return;
+        btns.appendChild(mgBtn(label, done?"ok":"", i+":t"+k+v, done?null:tap(()=>{
+          if(v === val){ p.ok.push(k); if(p.ok.length===s.items.length) solve(t,sg,i,s); }
+          else { badKey = i+":t"+k+v; mistake(t,sg,i,s, text+" → "+label); }
+        })));
+      });
+      row.appendChild(btns); list.appendChild(row);
+    });
+    area.appendChild(list);
+  }
+  if(s.type === "anagram"){
+    const letters = [...s.word];
+    const p = sg.prog[i] = sg.prog[i] || {tiles:shuffle(letters.length,true).map(k=>letters[k]), typed:[]};
+    const slots = document.createElement("div"); slots.className = "mg-slots" + (badKey===i+":slots" ? " bad":"");
+    letters.forEach((_,k)=>{ const c=document.createElement("span"); c.textContent = p.typed[k]!==undefined ? p.tiles[p.typed[k]] : ""; slots.appendChild(c); });
+    const tiles = document.createElement("div"); tiles.className = "mg-tiles";
+    p.tiles.forEach((ch,j)=>{
+      const used = p.typed.includes(j);
+      const b = mgBtn(ch, used?"used":"", i+":l"+j, used?null:tap(()=>{
+        p.typed.push(j);
+        if(p.typed.length === letters.length){
+          const guess = p.typed.map(x=>p.tiles[x]).join("");
+          if(guess === s.word) solve(t,sg,i,s);
+          else { badKey = i+":slots"; mistake(t,sg,i,s, guess); p.typed = []; }
+        }
+      }));
+      tiles.appendChild(b);
+    });
+    const ctl = document.createElement("div"); ctl.className = "mg-ctl";
+    ctl.append(mgBtn("⌫ Өшіру","", i+":bk", tap(()=>{ p.typed.pop(); })), mgBtn("Тазарту","", i+":cl", tap(()=>{ p.typed = []; })));
+    area.append(slots, tiles, ctl);
+  }
+}
+
 function renderStations(){
   const t = state.teams[state.active], sg = cur(t), list = STAGES[t.stage], box = $("stations");
   box.innerHTML = "";
   list.forEach((s,i)=>{
     const el = document.createElement("article");
+    const head = `<div class="st-top"><span class="st-no">${t.stage+1}.${i+1} · ${TYPE_LABEL[s.type]}</span><span class="st-subj"></span></div>`;
     if(!sg.solved[i] && i > solvedIn(sg)){
       el.className = "st locked";
-      el.innerHTML = `<div class="st-top"><span class="st-no">${t.stage+1}.${i+1} станция</span><span class="st-subj"></span></div><p class="lock-note">🔒 Бұл станция алдыңғы станцияны шешкенде ашылады.</p>`;
+      el.innerHTML = head + `<p class="lock-note">🔒 Бұл станция алдыңғы станцияны шешкенде ашылады.</p>`;
       el.querySelector(".st-subj").textContent = s.subj;
       box.appendChild(el); return;
     }
     el.className = "st" + (sg.solved[i]?" done":"");
-    el.innerHTML = `<div class="st-top"><span class="st-no">${t.stage+1}.${i+1} станция</span><span class="st-subj"></span></div>
-      <p class="task"></p>
+    el.innerHTML = head + `<p class="task"></p>
       ${sg.hints[i] && !sg.solved[i] ? `<div class="hint"></div>`:""}
-      ${sg.solved[i] ? `<div class="seal">ЦИФР: ${sg.code[i]}</div><div class="st-msg"></div>` :
-       `<div class="st-row"><input id="ans-${i}" aria-label="${i+1}-станция жауабы" placeholder="Жауабыңыз" autocomplete="off">
-        <button class="b" type="button" data-act="check">Тексеру</button>
-        <button class="b alt" type="button" data-act="hint" ${sg.hints[i]?"disabled":""}>Кеңес +60 с</button></div>
-        <div class="st-msg ${sg.msgs[i]?"no":""}"></div>`}`;
+      ${sg.solved[i] ? `<div class="seal">ЦИФР: ${sg.code[i]}</div>` : `<div class="mg"></div>`}
+      <div class="st-msg ${sg.msgs[i] && !sg.solved[i] ?"no":""}"></div>
+      ${sg.solved[i] ? "" : `<div class="st-row"><button class="b alt" type="button" data-act="hint" ${sg.hints[i]?"disabled":""}>Кеңес +60 с</button></div>`}`;
     el.querySelector(".st-subj").textContent = s.subj;
-    el.querySelector(".task").textContent = s.task;
+    el.querySelector(".task").textContent = s.title;
     const h = el.querySelector(".hint"); if(h) h.textContent = "Кеңес: "+s.hint;
-    const m = el.querySelector(".st-msg"); m.textContent = sg.solved[i] ? "Дұрыс! "+s.note : sg.msgs[i];
+    el.querySelector(".st-msg").textContent = sg.solved[i] ? "Дұрыс! "+s.note : sg.msgs[i];
     if(!sg.solved[i]){
-      const inp = el.querySelector("input");
-      const task = stageLabel(t)+" · "+(i+1)+"-станция · "+s.subj;
-      const check = ()=>{
-        if(!inp.value.trim()) return;
-        touch(t);
-        if(s.ans.some(a=>norm(a)===norm(inp.value))){ sg.solved[i]=true; sg.msgs[i]=""; justSolved = i; }
-        else { t.wrong++; sg.msgs[i] = "Қате. +30 с айып. Тағы ойланып көріңіз."; }
-        report({team:t.name, event:"Жауап", task, answer:inp.value.trim(), result:sg.solved[i]?"дұрыс":"қате", points:fmt(elapsed(t)), total:stageLabel(t)+" "+sg.solved.filter(Boolean).length+"/5"});
-        render();
-        if(!sg.solved[i]) $("ans-"+i)?.focus();
-      };
-      el.querySelector('[data-act="check"]').onclick = check;
-      inp.onkeydown = e=>{ if(e.key==="Enter") check(); };
+      buildGame(el.querySelector(".mg"), t, sg, i, s);
       el.querySelector('[data-act="hint"]').onclick = ()=>{
         touch(t); sg.hints[i]=true;
-        report({team:t.name, event:"Кеңес", task, answer:"", result:"+60 с", points:fmt(elapsed(t)), total:stageLabel(t)+" "+sg.solved.filter(Boolean).length+"/5"});
+        report({team:t.name, event:"Кеңес", task:taskName(t,i,s), answer:"", result:"+60 с", points:fmt(elapsed(t)), total:stageLabel(t)+" "+sg.solved.filter(Boolean).length+"/5"});
         render();
       };
     }
     box.appendChild(el);
   });
+  badKey = null;
 }
 
 function renderLedger(){

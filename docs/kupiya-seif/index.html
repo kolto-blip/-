@@ -645,143 +645,271 @@ function openAvatarPicker(){
   $("av-pick").hidden = false;
 }
 
-/* эмодзи басы қай жаққа қарайтынын анықтайды: төменгі жартысының «салмақ орталығы» тұмсық жағына ығысады */
-const _facing = {};
-function emojiFacing(ch){
-  if(_facing[ch]) return _facing[ch];
-  let res = {dir:-1, mx:.2, my:.62};
-  try{
-    const N = 64, c = document.createElement("canvas"); c.width = c.height = N;
-    const x = c.getContext("2d"); x.textAlign = "center"; x.textBaseline = "middle";
-    x.font = `56px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; x.fillText(ch, N/2, N/2 + 2);
-    const d = x.getImageData(0,0,N,N).data;
-    let sx = 0, n = 0, minX = N, maxX = 0;
-    for(let yy = N*0.45|0; yy < N; yy++) for(let xx = 0; xx < N; xx++) if(d[(yy*N+xx)*4+3] > 100){ sx += xx; n++; if(xx<minX) minX=xx; if(xx>maxX) maxX=xx; }
-    if(n > 20){ const dir = sx/n < N/2 ? -1 : 1; res = {dir, mx: (dir < 0 ? minX : maxX)/N, my:.64}; }
-  }catch(e){}
-  return (_facing[ch] = res);
-}
-
-/* ---- жеңіс сахнасы (canvas, тегіс мультфильм стилі) ---- */
-let pxRAF = null;
+/* ---- жеңіс сахнасы: жануарлар тұғырға өзінше шығады ---- */
 const cssVar = (el, name) => getComputedStyle(el).getPropertyValue(name).trim();
 function resolveColor(c){ const m = /^var\((--[\w-]+)\)$/.exec(c); return m ? cssVar(document.documentElement, m[1]) : c; }
-function shade(hex, f){
-  const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex); if(!m) return hex;
-  return "#" + [1,2,3].map(i=>Math.max(0,Math.min(255,Math.round(parseInt(m[i],16)*f))).toString(16).padStart(2,"0")).join("");
-}
 const lerp = (a,b,k)=>a+(b-a)*k;
 const clamp01 = x=>Math.max(0,Math.min(1,x));
 const easeOut = k=>1-Math.pow(1-k,3);
 const easeBack = k=>{ const c=1.7; return 1 + (c+1)*Math.pow(k-1,3) + c*Math.pow(k-1,2); };
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 function star(ctx, x, y, r, rot){
   ctx.beginPath();
   for(let i=0;i<8;i++){ const a = rot + i*Math.PI/4, rr = i%2 ? r*.35 : r; ctx.lineTo(x+Math.cos(a)*rr, y+Math.sin(a)*rr); }
   ctx.closePath(); ctx.fill();
 }
+/* эмодзи қай жаққа қарайтынын және аузы қайда екенін анықтайды */
+const _facing = {};
+function emojiFacing(ch){
+  if(_facing[ch]) return _facing[ch];
+  let res = {dir:-1, mx:.1, my:.4};
+  try{
+    const N = 64, c = document.createElement("canvas"); c.width = c.height = N;
+    const x = c.getContext("2d"); x.textAlign = "center"; x.textBaseline = "middle";
+    x.font = `56px ${EMOJI_FONT}`; x.fillText(ch, N/2, N/2 + 2);
+    const d = x.getImageData(0,0,N,N).data, op = (xx,yy)=>d[(yy*N+xx)*4+3] > 100;
+    let sx = 0, n = 0;
+    for(let yy = N*0.45|0; yy < N; yy++) for(let xx = 0; xx < N; xx++) if(op(xx,yy)){ sx += xx; n++; }
+    if(n > 20){
+      const dir = sx/n < N/2 ? -1 : 1;
+      // аузы: тұмсық жағындағы ең шеткі нүкте (жоғарғы 3/4 бөлігінде)
+      let best = dir < 0 ? N : -1, by = N*.4;
+      for(let yy = 0; yy < N*.75; yy++) for(let xx = 0; xx < N; xx++) if(op(xx,yy)){
+        if(dir < 0 ? xx < best : xx > best){ best = xx; by = yy; }
+      }
+      res = {dir, mx: best/N, my: by/N};
+    }
+  }catch(e){}
+  return (_facing[ch] = res);
+}
+
+/* Әр жануардың шығу қимылы. Бірлік — жануардың бойы; x=0 — тұғыр ортасы, сол жақтан келеді.
+   y — «жерден» (баспалдақ/тұғыр) биіктік. Қайтарады: x, y, rot (сағат тілімен), sx, sy, landed, moving, fx */
+const MOVES = {"🐆":"pounce","🦅":"fly","🐺":"howl","🐎":"gallop","🦁":"roar","🐫":"sway","🦉":"drop","🦊":"sneak",
+               "🐻":"roll","🦌":"leap","🐢":"shell","🐬":"splash","🐉":"dragon","🐲":"dragon"};
+const MOVE_DUR = {pounce:1.3, fly:1.6, howl:1.1, gallop:1.4, roar:1.6, sway:1.9, drop:1.3, sneak:1.4, roll:1.5, leap:1.5, shell:2.0, splash:1.2, dragon:1.6, hop:1.4};
+const T_IN = .55;
+function choreo(kind, t){
+  const D = MOVE_DUR[kind] || 1.4, k = clamp01((t-T_IN)/D), landed = t >= T_IN + D, c = Math.max(0, t-(T_IN+D));
+  let x = 0, y = 0, rot = 0, sx = 1, sy = 1, fx = {};
+  const run = (from, kk=k)=>lerp(from, 0, easeOut(kk));
+  switch(kind){
+    case "pounce":
+      if(!landed){ if(k < .62){ const q = k/.62; x = lerp(-4.2,-1.3,q); y = Math.abs(Math.sin(q*18))*.12; rot = Math.sin(q*18)*.08; }
+                   else { const q = (k-.62)/.38; x = lerp(-1.3,0,q); y = Math.sin(Math.PI*q)*1.3; rot = -.3*Math.sin(Math.PI*q); } }
+      else { const b = Math.abs(Math.sin(c*4)); y = b*.35; sy = 1 - (1-b)*.1; }
+      break;
+    case "fly": case "dragon":
+      if(!landed){ x = run(-3.4) + Math.sin(k*Math.PI*2)*.5*(1-k); y = lerp(3.2, 0, easeOut(k)) + (kind==="dragon" ? Math.sin(k*9)*.25*(1-k) : 0); sy = 1 + Math.sin(t*28)*.18; }
+      else { y = .3 + Math.sin(c*3)*.12; sy = 1 + Math.sin(t*22)*.12; }
+      if(kind==="dragon" && landed) fx.fire = true;
+      break;
+    case "howl":
+      if(!landed){ x = run(-4); y = Math.abs(Math.sin(k*20))*.15; }
+      else { const p = c % 2.4; const h = p < 1.2 ? Math.sin(p/1.2*Math.PI) : 0; rot = -.45*h*-1; rot = .45*h; fx.ring = p < 1.2 ? p/1.2 : null; fx.howl = p < .05; }
+      break;
+    case "gallop":
+      if(!landed){ x = lerp(-4.4, 0, easeOut(k)); y = Math.abs(Math.sin(k*Math.PI*4))*.55; rot = Math.sin(k*Math.PI*8)*.12; }
+      else { const p = c % 2; const r = p < .8 ? Math.sin(p/.8*Math.PI) : 0; rot = .5*r; y = r*.15; }
+      break;
+    case "roar":
+      if(!landed){ x = run(-3.8); rot = Math.sin(k*Math.PI*6)*.1; y = Math.abs(Math.sin(k*Math.PI*6))*.06; }
+      else { const p = c % 2.2; const r = p < .7 ? Math.sin(p/.7*Math.PI) : 0; sx = sy = 1 + r*.28; fx.ring = p < .9 ? p/.9 : null; }
+      break;
+    case "sway":
+      if(!landed){ x = run(-4); rot = Math.sin(k*Math.PI*5)*.14; y = Math.abs(Math.sin(k*Math.PI*5))*.08; }
+      else rot = Math.sin(c*2.2)*.12;
+      break;
+    case "drop":
+      if(!landed){ y = (1-easeOut(k))*4.2; sx = 1 + Math.sin(t*20)*.12; rot = Math.sin(t*6)*.15*(1-k); }
+      else { const p = c % 2.4; sx = p < .8 ? Math.cos(p/.8*Math.PI*2) : 1; }
+      break;
+    case "sneak":
+      if(!landed){ if(k < .75){ x = lerp(-4,-.8,k/.75); sy = .78; sx = 1.08; } else { const q = (k-.75)/.25; x = lerp(-.8,0,q); y = Math.sin(Math.PI*q)*.7; sy = lerp(.78,1,q); } }
+      else rot = Math.sin(c*14)*.12*(Math.sin(c*1.5) > 0 ? 1 : .2);
+      break;
+    case "roll":
+      if(!landed){ x = run(-4.2); rot = (easeOut(k)-1)*4*Math.PI; y = Math.abs(Math.sin(k*Math.PI*4))*.15; }
+      else { const b = Math.abs(Math.sin(c*3)); y = b*.25; sy = 1 + b*.06; rot = Math.sin(c*3)*.1; }
+      break;
+    case "leap":
+      if(!landed){ x = lerp(-4.2, 0, k); y = Math.abs(Math.sin(k*Math.PI*3))*1.1; rot = -Math.cos(k*Math.PI*3)*.2; }
+      else y = Math.abs(Math.sin(c*3.5))*.4;
+      break;
+    case "shell":
+      if(!landed){ if(k < .55){ x = lerp(-4.2,-2.4,k/.55); rot = Math.sin(k*40)*.03; }
+                   else { const q = (k-.55)/.45; x = lerp(-2.4,0,easeOut(q)); rot = easeOut(q)*6*Math.PI; y = Math.sin(Math.PI*q)*.3; } }
+      else { const p = c % 3; rot = p < .6 ? (p/.6)*2*Math.PI : 0; }
+      break;
+    case "splash":
+      if(!landed){ x = lerp(-3.2, 0, k); y = lerp(-1.4, 0, k) + Math.sin(Math.PI*k)*2.4; rot = -Math.cos(Math.PI*k)*.7; fx.splash = k; }
+      else { const p = c % 2.6; if(p < .9){ const q = p/.9; y = Math.sin(q*Math.PI)*1.0; rot = q*2*Math.PI; } }
+      if(t >= T_IN && t < T_IN + .5) fx.splashStart = (t-T_IN)/.5;
+      if(landed && c < .5) fx.splashEnd = c/.5;
+      break;
+    default: // hop
+      if(!landed){ x = run(-4); y = Math.abs(Math.sin(k*Math.PI*5))*.4; }
+      else y = Math.abs(Math.sin(c*4))*.3;
+  }
+  return {x, y, rot, sx, sy, landed, moving: t > T_IN && !landed, visible: t > T_IN, c, fx, D};
+}
+// баспалдақ: x < -2.7 — еден, -2.7…-1.15 — баспалдақ, одан кейін — тұғыр
+function groundAt(x, ph, flying){
+  if(flying) return x > -1.15 ? ph : 0;
+  if(x <= -2.7) return 0;
+  if(x >= -1.15) return ph;
+  return ph * Math.ceil((x + 2.7)/1.55*3)/3;
+}
+const FLYERS = {fly:1, dragon:1, drop:1, splash:1};
+
+/* ---- жануар дыбыстары ---- */
+function glide(f0, f1, dur, type, vol, delay=0){
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + delay;
+    o.type = type; o.frequency.setValueAtTime(f0, t0); o.frequency.exponentialRampToValueAtTime(Math.max(20,f1), t0+dur);
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0+.04); g.gain.exponentialRampToValueAtTime(.0001, t0+dur);
+    o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0+dur+.05);
+  }catch(e){}
+}
+function animalCall(kind){
+  ({
+    howl:  ()=>{ glide(380,760,.7,"sine",.12); glide(760,520,.9,"sine",.1,.7); },
+    roar:  ()=>{ glide(140,70,.8,"sawtooth",.08); glide(95,55,.9,"square",.05); },
+    fly:   ()=>{ glide(2400,1500,.35,"sawtooth",.04); glide(2200,1300,.3,"sawtooth",.035,.4); },
+    drop:  ()=>{ glide(420,380,.28,"sine",.12); glide(380,340,.45,"sine",.12,.42); },
+    gallop:()=>{ for(let i=0;i<6;i++) glide(900+(i%2)*250,700,.09,"sawtooth",.04,i*.07); },
+    splash:()=>{ for(let i=0;i<8;i++) glide(3200,2600,.03,"square",.03,i*.05); },
+    dragon:()=>{ glide(120,60,1.0,"sawtooth",.09); },
+    pounce:()=>glide(300,180,.25,"sawtooth",.06),
+    sneak: ()=>{ glide(1500,1700,.12,"triangle",.06); glide(1600,1900,.12,"triangle",.06,.18); },
+    roll:  ()=>glide(160,110,.5,"square",.05),
+    leap:  ()=>glide(900,1300,.2,"triangle",.06),
+    shell: ()=>{ for(let i=0;i<10;i++) glide(400+i*80,500+i*80,.05,"square",.03,i*.04); },
+    sway:  ()=>glide(220,160,.6,"triangle",.07),
+  }[kind] || (()=>glide(600,900,.15,"triangle",.06)))();
+}
+function stepSounds(kind){
+  const D = MOVE_DUR[kind] || 1.4, n = FLYERS[kind] ? 0 : Math.round(D*4);
+  for(let i=0;i<n;i++) setTimeout(()=>tone(170 + (i%2)*40, .04, "square", .04), (T_IN + i*D/n)*1000);
+  if(FLYERS[kind]) for(let i=0;i<Math.round(D*6);i++) setTimeout(()=>glide(500,300,.08,"triangle",.03), (T_IN + i/6)*1000);
+}
+
+/* ---- бес басты айдаһар (гидра). Өлшемдер 2D «жергілікті» бірлікпен: y төмен қарай, денесінің ортасы (0,3) ---- */
+const HYDRA_GREEN = "#3c9a4a", HYDRA_DARK = "#2e7a3a", HYDRA_BELLY = "#9bd16f";
+function hydraLayout(t, flying){
+  const heads = [];
+  for(let i=0;i<5;i++){
+    const bob = Math.sin(t*4 + i*1.3)*1.2;
+    heads.push({i, x:(i-2)*7.2, y:-13 - (2-Math.abs(i-2))*3.2 + bob, dir: i > 2 ? 1 : -1});
+  }
+  return {heads, w: flying ? Math.sin(t*10)*.6 : Math.sin(t*3)*.18};
+}
+const quadPt = (p0, c, p1, q)=>[(1-q)*(1-q)*p0[0] + 2*(1-q)*q*c[0] + q*q*p1[0], (1-q)*(1-q)*p0[1] + 2*(1-q)*q*c[1] + q*q*p1[1]];
+const neckCurve = h=>[[h.x*.25,-3],[h.x*.7,-7],[h.x,h.y+3]];
+const HEAD_SIZE = 8.5;
+function hydraMouth(h, face){
+  const same = h.dir === face.dir ? 1 : -1;
+  return [h.x + same*(face.mx-.5)*HEAD_SIZE, h.y + (face.my-.5)*HEAD_SIZE];
+}
+function drawHydra2D(ctx, t, L, face, fire){
+  ctx.fillStyle = HYDRA_DARK;
+  [-1,1].forEach(sd=>{ ctx.save(); ctx.translate(sd*4,0); ctx.rotate(sd*L.w); ctx.beginPath();
+    ctx.moveTo(0,0); ctx.lineTo(sd*13,-9); ctx.lineTo(sd*10,-2); ctx.lineTo(sd*12,3); ctx.closePath(); ctx.fill(); ctx.restore(); });
+  ctx.strokeStyle = HYDRA_GREEN; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.moveTo(6,5); ctx.quadraticCurveTo(15,10,18,3); ctx.stroke();
+  L.heads.forEach(h=>{ const [p0,c,p1] = neckCurve(h); ctx.beginPath(); ctx.moveTo(...p0); ctx.quadraticCurveTo(...c, ...p1); ctx.stroke(); });
+  ctx.fillStyle = HYDRA_GREEN; ctx.beginPath(); ctx.ellipse(0,3,9,7,0,0,7); ctx.fill();
+  ctx.fillStyle = HYDRA_BELLY; ctx.beginPath(); ctx.ellipse(0,5,5,4,0,0,7); ctx.fill();
+  ctx.font = `${HEAD_SIZE}px ${EMOJI_FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  L.heads.forEach(h=>{ ctx.save(); ctx.translate(h.x, h.y); ctx.scale(h.dir === face.dir ? 1 : -1, 1); ctx.fillStyle = "#000"; ctx.fillText("🐲", 0, .5); ctx.restore(); });
+  if(fire) L.heads.forEach(h=>{
+    const [mx, my] = hydraMouth(h, face), flick = Math.sin(t*25 + h.i)*.5 + .5, n = 9;
+    for(let k=n;k>=0;k--){
+      const q = k/n, x = mx + h.dir*q*(10 + flick*3), y = my + Math.sin(t*30 + k + h.i)*.5*q, r = .8 + q*2.4;
+      const fg = ctx.createRadialGradient(x,y,0,x,y,r);
+      fg.addColorStop(0, `rgba(255,245,170,${.95 - q*.4})`); fg.addColorStop(.5, `rgba(255,150,30,${.85 - q*.5})`); fg.addColorStop(1, "rgba(230,60,20,0)");
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    }
+  });
+}
+
+/* ---- 2D сахна (WebGL болмағанда) ---- */
+let pxRAF = null;
 function pixelScene(avatar, reward, place, teamColor, still, dragon){
+  const body = dragon ? "🐉" : avatar, kind = MOVES[body] || "hop", face = emojiFacing(kind === "dragon" ? "🐲" : body);
   const cv = $("win-px"), ctx = cv.getContext("2d");
   const LW = 96, LH = 90, K = 4 * Math.min(2, window.devicePixelRatio || 1);
   cv.width = LW*K; cv.height = LH*K;
   const win = $("win");
   const gold = cssVar(win,"--medal") || "#f4c542", hi = cssVar(win,"--medal-hi") || "#ffe38a", lo = cssVar(win,"--medal-lo") || "#a8761c";
-  const shirt = resolveColor(teamColor) || "#f2c14e", shirtDk = shade(shirt,.72);
   const display = cssVar(document.documentElement,"--f-display") || "sans-serif";
-  const EMOJI = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-  const ph = place===1 ? 22 : place===2 ? 18 : place===3 ? 15 : 12;
-  const ground = LH - 2, podTop = ground - ph, cx = LW/2;
-  const SKIN = "#f1c08f", PANTS = "#2b3442", SHOE = "#151a22";
+  const phU = place===1 ? 1.25 : place===2 ? 1.0 : place===3 ? .8 : .65;   // 3D-мен бірдей бірлік
+  const U = 15, ground = LH - 3, cx = LW/2 + 10, ph = phU*U, podTop = ground - ph;
+  const X = u=>cx + u*U*.95, AS = 22;
   cancelAnimationFrame(pxRAF);
   const t0 = performance.now();
   const draw = now=>{
     const t = still ? 9 : (now - t0)/1000;
-    ctx.setTransform(K,0,0,K,0,0);
-    ctx.clearRect(0,0,LW,LH);
+    ctx.setTransform(K,0,0,K,0,0); ctx.clearRect(0,0,LW,LH);
     ctx.lineCap = "round"; ctx.lineJoin = "round";
-    // тұғыр
-    const rise = easeBack(clamp01(t/0.55)), py = podTop + (1-rise)*(ph+6);
-    const g = ctx.createLinearGradient(0, py, 0, ground);
-    g.addColorStop(0, hi); g.addColorStop(.45, gold); g.addColorStop(1, lo);
-    ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(cx, ground+.5, 26, 1.6, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(cx-20, py, 40, ground-py, [3,3,1,1]); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,.45)"; ctx.fillRect(cx-18.5, py+1, 37, .9);
+    const rise = easeBack(clamp01(t/0.55)), dy = (1-rise)*(ph+8);
+    // баспалдақ пен тұғыр
+    const g = ctx.createLinearGradient(0, podTop, 0, ground); g.addColorStop(0, hi); g.addColorStop(.45, gold); g.addColorStop(1, lo);
+    ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(cx-10, ground+.8, 40, 1.8, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = lo;
+    for(let s=1;s<=3;s++){ const sh = ph*s/3, x0 = X(-2.7 + (s-1)*1.55/3); ctx.fillRect(x0, ground - sh + dy, X(-1.15) - x0, sh); }
+    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(X(-1.15), podTop + dy, X(1.15)-X(-1.15), ph, [3,3,1,1]); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.45)"; ctx.fillRect(X(-1.15)+1.5, podTop+dy+1, X(1.15)-X(-1.15)-3, .9);
     ctx.fillStyle = "rgba(40,25,5,.85)"; ctx.font = `700 ${Math.round(ph*.72)}px ${display}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(String(place), cx, py + (ground-py)/2 + 1);
-    // кейіпкер
-    if(t > 0.5){
-      const walkK = clamp01((t-0.55)/1.4), hx = lerp(-14, cx, easeOut(walkK));
-      const walking = t > 0.55 && t < 1.95;
-      const swing = walking ? Math.sin((t-0.55)*20) * 0.55 : 0;
-      const lift = clamp01((t-2.05)/0.45), liftE = easeBack(lift);
-      let jump = walking ? Math.abs(Math.sin((t-0.55)*20)) * 1.2 : 0;
-      if(t > 2.55 && t < 6.5) jump = Math.abs(Math.sin((t-2.55)*5.2)) * 6;
-      const feet = podTop - jump;
-      // көлеңке
-      ctx.fillStyle = `rgba(0,0,0,${.3 - jump*.03})`; ctx.beginPath(); ctx.ellipse(hx, podTop+.3, 6 - jump*.3, 1.1, 0, 0, 7); ctx.fill();
-      // аяқтар
-      ctx.strokeStyle = PANTS; ctx.lineWidth = 2.7;
-      [[-2.2, swing],[2.2, -swing]].forEach(([dx, a])=>{
-        const x0 = hx+dx, y0 = feet-8.5, x1 = x0 + Math.sin(a)*8, y1 = y0 + Math.cos(a)*8;
-        ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
-        ctx.fillStyle = SHOE; ctx.beginPath(); ctx.ellipse(x1+1, y1+.3, 2.1, 1.2, 0, 0, 7); ctx.fill();
-      });
-      // қолдар (денеден артта)
-      const top = feet - 20;
-      const armA = side => lerp(Math.PI/2 - side*0.28, -Math.PI/2 - side*0.22, liftE) + (walking ? -side*swing*.6 : 0);
-      const hands = [];
-      [-1, 1].forEach(side=>{
-        const sx = hx + side*5, sy = top + 2.5, a = side < 0 ? Math.PI - armA(1) : armA(1);
-        const ex = sx + Math.cos(a)*9, ey = sy + Math.sin(a)*9;
-        ctx.strokeStyle = shirtDk; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(ex,ey); ctx.stroke();
-        ctx.fillStyle = SKIN; ctx.beginPath(); ctx.arc(ex, ey, 1.6, 0, 7); ctx.fill();
-        hands.push([ex,ey]);
-      });
-      // дене
-      const bg = ctx.createLinearGradient(hx-6, 0, hx+6, 0); bg.addColorStop(0, shirt); bg.addColorStop(1, shirtDk);
-      ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(hx-5.8, top, 11.6, 12.5, [4,4,3,3]); ctx.fill();
-      ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(hx-5.8, top+10, 11.6, 1.2);
-      ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.font = `700 6px ${display}`; ctx.fillText(String(place), hx, top+5.8);
-      // бас — топтың аватары
-      ctx.fillStyle = "#000"; ctx.font = `17px ${EMOJI}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.save(); ctx.translate(hx, top-7); ctx.rotate(walking ? swing*.08 : (t>2.55 ? Math.sin(t*5.2)*.06 : 0)); ctx.fillText(avatar, 0, 0); ctx.restore();
-      // айдаһар от бүркеді
-      if(dragon && t > 2.5){
-        const n = 14, flick = Math.sin(t*25)*.5 + .5;
-        for(let k=n;k>=0;k--){
-          const F = emojiFacing(avatar), q = k/n, x = hx + (F.mx - .5)*17 + F.dir*q*(18 + flick*4), y = top - 7 + (F.my - .5)*17 + Math.sin(t*30 + k)*0.6*q;
-          const r = 1 + q*3.2;
-          const fg = ctx.createRadialGradient(x,y,0,x,y,r);
-          fg.addColorStop(0, `rgba(255,245,170,${.95 - q*.4})`); fg.addColorStop(.5, `rgba(255,150,30,${.85 - q*.5})`); fg.addColorStop(1, "rgba(230,60,20,0)");
-          ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-        }
-      }
-      // кубок кеуде тұсынан бастың үстіне көтеріледі
-      if(t > 2.05){
-        const cy = lerp(top + 6, top - 23, liftE);
-        ctx.save(); ctx.shadowColor = hi; ctx.shadowBlur = t > 2.5 ? 6 + Math.sin(t*4)*3 : 0;
-        ctx.fillStyle = "#000"; ctx.font = `15px ${EMOJI}`; ctx.fillText(reward, hx, cy); ctx.restore();
-        if(t > 2.45){
-          ctx.fillStyle = hi;
-          for(let i=0;i<5;i++){
-            const a = t*1.6 + i*Math.PI*2/5, r = 11 + Math.sin(t*3+i)*1.5, sz = 1.2 + (Math.sin(t*6+i*2)+1)*.8;
-            star(ctx, hx + Math.cos(a)*r, cy + Math.sin(a)*r*.75, sz, t*2+i);
-          }
-        }
+    ctx.fillText(String(place), cx, podTop + dy + ph/2 + 1);
+    if(kind === "splash"){ ctx.fillStyle = "rgba(80,170,255,.55)"; ctx.beginPath(); ctx.ellipse(X(-3.2), ground, 9, 1.8, 0, 0, 7); ctx.fill(); }
+    // жануар
+    const m = choreo(kind, t);
+    const gx = m.x, gy = groundAt(gx, phU, FLYERS[kind] && !m.landed ? 1 : 0);
+    const baseY = ground - gy*U;
+    const isHydra = kind === "dragon";
+    const ay = isHydra ? baseY - 10 - m.y*U*.9 : baseY - AS/2 - m.y*U*.9;
+    const flip = (m.moving && face.dir < 0 && kind !== "drop") ? -1 : 1;
+    if(m.visible){
+      ctx.fillStyle = `rgba(0,0,0,${Math.max(.08,.3 - m.y*.08)})`; ctx.beginPath(); ctx.ellipse(X(gx), baseY+.3, Math.max(3, 8 - m.y*2), 1.3, 0, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(X(gx), ay);
+      if(isHydra){ ctx.scale(flip, 1); drawHydra2D(ctx, t, hydraLayout(t, m.moving), face, m.fx.fire); }
+      else { ctx.rotate(m.rot*flip); ctx.scale(m.sx*flip, m.sy);
+        ctx.fillStyle = "#000"; ctx.font = `${AS}px ${EMOJI_FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(body, 0, 1); }
+      ctx.restore();
+      // дыбыс толқыны (қасқыр, арыстан)
+      if(m.fx.ring != null){ ctx.strokeStyle = `rgba(255,255,255,${.7*(1-m.fx.ring)})`; ctx.lineWidth = 1.2;
+        for(let r=0;r<3;r++){ const rr = (m.fx.ring*16 + r*5); ctx.beginPath(); ctx.arc(X(gx) + face.dir*6, ay - 6, rr, face.dir<0 ? Math.PI*.75 : -Math.PI*.25, face.dir<0 ? Math.PI*1.25 : Math.PI*.25); ctx.stroke(); } }
+      // су шашырауы (дельфин)
+      const sp = m.fx.splashStart ?? m.fx.splashEnd;
+      if(sp != null){ const sx0 = m.fx.splashStart != null ? X(-3.2) : X(0), sy0 = m.fx.splashStart != null ? ground : podTop;
+        ctx.fillStyle = `rgba(120,200,255,${1-sp})`;
+        for(let i=0;i<10;i++){ const a = -Math.PI*(.15 + .7*i/9), r = sp*14; ctx.beginPath(); ctx.arc(sx0 + Math.cos(a)*r, sy0 + Math.sin(a)*r + sp*sp*10, 1.1, 0, 7); ctx.fill(); } }
+      // марапат жануардың үстінде қалықтайды
+      const liftStart = Math.max(2.3, T_IN + m.D + .1);
+      if(t > liftStart){
+        const le = easeBack(clamp01((t - liftStart)/.45));
+        const cy = lerp(ay, ay - (isHydra ? 28 : AS/2 + 9), le) + Math.sin(t*3)*1;
+        ctx.save(); ctx.shadowColor = hi; ctx.shadowBlur = 6 + Math.sin(t*4)*3;
+        ctx.fillStyle = "#000"; ctx.font = `15px ${EMOJI_FONT}`; ctx.fillText(reward, X(gx), cy); ctx.restore();
+        if(le > .8){ ctx.fillStyle = hi;
+          for(let i=0;i<5;i++){ const a = t*1.6 + i*Math.PI*2/5, r = 11 + Math.sin(t*3+i)*1.5, sz = 1.2 + (Math.sin(t*6+i*2)+1)*.8;
+            star(ctx, X(gx) + Math.cos(a)*r, cy + Math.sin(a)*r*.75, sz, t*2+i); } }
       }
     }
-    if(!still && t < 12 && !win.hidden) pxRAF = requestAnimationFrame(draw);
+    if(!still && t < 14 && !win.hidden) pxRAF = requestAnimationFrame(draw);
   };
   pxRAF = requestAnimationFrame(draw);
 }
 
 /* ---- 3D жеңіс сахнасы (three.js). WebGL болмаса, 2D сахна көрсетіледі ---- */
 let r3 = null;
-const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 function emojiTexture(ch){
   const c = document.createElement("canvas"); c.width = c.height = 256;
   const x = c.getContext("2d"); x.textAlign = "center"; x.textBaseline = "middle";
   x.font = `210px ${EMOJI_FONT}`; x.fillText(ch, 128, 140);
-  return new THREE.CanvasTexture(c);
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; return t;
 }
 function plateTexture(str, w, h, c1, c2, c3, round){
   const c = document.createElement("canvas"); c.width = w; c.height = h;
@@ -810,6 +938,8 @@ function disposeScene(sc){
 }
 function scene3d(avatar, place, teamColor, still, dragon){
   if(!window.THREE) return false;
+  const body = dragon ? "🐉" : avatar, kind = MOVES[body] || "hop", isHydra = kind === "dragon";
+  const face = emojiFacing(isHydra ? "🐲" : body);
   const cv = $("win-3d");
   try{
     if(!r3){
@@ -825,35 +955,50 @@ function scene3d(avatar, place, teamColor, still, dragon){
   const W = cv.clientWidth || 320, H = cv.clientHeight || 300;
   R.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); R.setSize(W, H, false);
   const gold = cssVar(win,"--medal") || "#f4c542", hi = cssVar(win,"--medal-hi") || "#ffe38a", lo = cssVar(win,"--medal-lo") || "#a8761c";
-  const shirt = resolveColor(teamColor) || "#f2c14e";
   const scene = new THREE.Scene(); r3.scene = scene;
   const cam = new THREE.PerspectiveCamera(32, W/H, .1, 100);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x223344, .8));
   const sun = new THREE.DirectionalLight(0xffffff, 1.0); sun.position.set(3,8,6); sun.castShadow = true;
-  sun.shadow.mapSize.set(1024,1024); Object.assign(sun.shadow.camera, {left:-4,right:4,top:5,bottom:-3,near:1,far:25});
+  sun.shadow.mapSize.set(1024,1024); Object.assign(sun.shadow.camera, {left:-5,right:4,top:5,bottom:-3,near:1,far:25});
   scene.add(sun);
   const rim = new THREE.DirectionalLight(C(hi), .7); rim.position.set(-5,4,-4); scene.add(rim);
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(5,48), new THREE.ShadowMaterial({opacity:.35}));
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(6,48), new THREE.ShadowMaterial({opacity:.35}));
   floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
   const mat = (c, m=0, r=.6, extra={})=>new THREE.MeshStandardMaterial(Object.assign({color:C(c), metalness:m, roughness:r}, extra));
   const add = (parent, geo, m, x=0, y=0, z=0)=>{ const o = new THREE.Mesh(geo, m); o.position.set(x,y,z); o.castShadow = true; o.receiveShadow = true; parent.add(o); return o; };
-  // тұғыр
+  // тұғыр мен баспалдақ
   const ph = place===1 ? 1.25 : place===2 ? 1.0 : place===3 ? .8 : .65;
-  const metal = mat(gold, .55, .32);
+  const metal = mat(gold, .55, .32), stepM = mat(lo, .45, .4);
   const front = new THREE.MeshStandardMaterial({map:plateTexture(String(place), 440, Math.round(440*ph/2.2), hi, gold, lo), metalness:.35, roughness:.4});
-  const pod = add(scene, new THREE.BoxGeometry(2.2, ph, 1.5), [metal,metal,metal,metal,front,metal]);
-  // кейіпкер
-  const hero = new THREE.Group(); scene.add(hero);
-  const shirtM = mat(shirt, .05, .5), pantsM = mat("#2b3442", 0, .7), skinM = mat("#f1c08f", 0, .65), shoeM = mat("#151a22", .1, .5);
-  const legs = [-.16,.16].map(x=>{ const g = new THREE.Group(); g.position.set(x,.74,0); hero.add(g);
-    add(g, new THREE.CylinderGeometry(.1,.09,.66,16), pantsM, 0,-.33,0); add(g, new THREE.BoxGeometry(.2,.11,.34), shoeM, 0,-.68,.06); return g; });
-  add(hero, new THREE.CylinderGeometry(.3,.34,.74,24), shirtM, 0,1.1,0);
-  add(hero, new THREE.SphereGeometry(.31,24,16), shirtM, 0,1.45,0).scale.set(1,.45,1);
-  add(hero, new THREE.CylinderGeometry(.09,.1,.16,12), skinM, 0,1.58,0);
-  const arms = [-1,1].map(side=>{ const g = new THREE.Group(); g.position.set(side*.4,1.44,0); hero.add(g);
-    add(g, new THREE.CylinderGeometry(.08,.075,.7,14), shirtM, 0,-.35,0); add(g, new THREE.SphereGeometry(.1,16,12), skinM, 0,-.74,0); return g; });
-  const head = new THREE.Sprite(new THREE.SpriteMaterial({map:emojiTexture(avatar), transparent:true}));
-  head.scale.set(1.1,1.1,1); head.position.set(0,2.02,0); hero.add(head);
+  const podG = new THREE.Group(); scene.add(podG);
+  add(podG, new THREE.BoxGeometry(2.3, ph, 1.5), [metal,metal,metal,metal,front,metal], 0, ph/2, 0);
+  for(let s=1;s<=3;s++){ const sh = ph*s/3, x0 = -2.7 + (s-1)*1.55/3, w = -1.15 - x0; add(podG, new THREE.BoxGeometry(w, sh, 1.3), stepM, x0 + w/2, sh/2, 0); }
+  if(kind === "splash"){ const pool = new THREE.Mesh(new THREE.CircleGeometry(.75, 32), new THREE.MeshStandardMaterial({color:C("#3aa0ff"), transparent:true, opacity:.75, metalness:.2, roughness:.1}));
+    pool.rotation.x = -Math.PI/2; pool.position.set(-3.2,.01,0); scene.add(pool); }
+  // жануар
+  const AS = 2.2;
+  const tex = emojiTexture(body);
+  const animal = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true}));
+  scene.add(animal);
+  // бес басты айдаһар: дене, қанаттар, құйрық, бес мойын мен бас
+  const HS = AS/22;                       // 2D жергілікті бірлік → әлем бірлігі
+  const hydra = isHydra ? (()=>{
+    const gm = mat(HYDRA_GREEN, .1, .55, {side:THREE.DoubleSide}), dm = mat(HYDRA_DARK, .1, .6, {side:THREE.DoubleSide}), bm = mat(HYDRA_BELLY, 0, .6);
+    const bodyM = add(scene, new THREE.SphereGeometry(9*HS, 28, 20), gm); bodyM.scale.set(1, 7/9, .8);
+    const belly = add(scene, new THREE.SphereGeometry(5*HS, 20, 14), bm); belly.scale.set(1, .8, .4);
+    const wings = [-1,1].map(sd=>{ const sh = new THREE.Shape(); sh.moveTo(0,0); sh.lineTo(sd*13*HS, 9*HS); sh.lineTo(sd*10*HS, 2*HS); sh.lineTo(sd*12*HS, -3*HS); sh.closePath();
+      return add(scene, new THREE.ShapeGeometry(sh), dm); });
+    const ball = r=>add(scene, new THREE.SphereGeometry(r*HS, 12, 10), gm);
+    const tail = [0,1,2,3,4,5].map(i=>ball(1.5 - i*.12));
+    const necks = [0,1,2,3,4].map(()=>[0,1,2,3,4,5].map(()=>ball(1.35)));
+    const texL = emojiTexture("🐲"), texR = emojiTexture("🐲"); texR.repeat.x = -1; texR.offset.x = 1;
+    const heads = [0,1,2,3,4].map(()=>{ const s = new THREE.Sprite(new THREE.SpriteMaterial({map:texL, transparent:true})); s.scale.set(HEAD_SIZE*HS*1.15, HEAD_SIZE*HS*1.15, 1); scene.add(s); return s; });
+    return {bodyM, belly, wings, tail, necks, heads, texL, texR};
+  })() : null;
+  const blob = new THREE.Mesh(new THREE.CircleGeometry(.55, 32), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:.3, depthWrite:false}));
+  blob.rotation.x = -Math.PI/2; scene.add(blob);
+  // дыбыс толқындары
+  const rings = [0,1,2].map(()=>{ const r = new THREE.Mesh(new THREE.RingGeometry(.92,1,48, 1, 0, Math.PI*.6), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide})); scene.add(r); return r; });
   // марапат
   const reward = new THREE.Group(); reward.visible = false; scene.add(reward);
   if(place===1){
@@ -866,10 +1011,10 @@ function scene3d(avatar, place, teamColor, still, dragon){
     const col = place===2 ? "#d9e0e6" : "#cf8a4f", dark = place===2 ? "#8c99a3" : "#7d4a22";
     const mm = mat(col, .9, .25);
     const faceTex = plateTexture(String(place), 256, 256, "#ffffff", col, dark, true);
-    const face = new THREE.MeshStandardMaterial({map:faceTex, metalness:.6, roughness:.3, transparent:true});
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.07,48), [mm, face, mm]);
-    disc.rotation.x = Math.PI/2; disc.position.y = .4; disc.castShadow = true; reward.add(disc);
     faceTex.center.set(.5,.5); faceTex.rotation = Math.PI/2;
+    const facem = new THREE.MeshStandardMaterial({map:faceTex, metalness:.6, roughness:.3, transparent:true});
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.07,48), [mm, facem, mm]);
+    disc.rotation.x = Math.PI/2; disc.position.y = .4; disc.castShadow = true; reward.add(disc);
     [[-1,"#2f6fe0"],[1,"#e0433a"]].forEach(([sd,c])=>{ const rb = add(reward, new THREE.BoxGeometry(.13,.55,.02), mat(c,0,.6), sd*.12,.98,-.02); rb.rotation.z = -sd*.32; });
   } else {
     const sh = new THREE.Shape();
@@ -878,60 +1023,96 @@ function scene3d(avatar, place, teamColor, still, dragon){
     add(reward, g, mat("#ffd23f", .4, .35, {emissive:C("#5a4300")}), 0,.45,0);
   }
   const glow = new THREE.PointLight(C(hi), 0, 4); reward.add(glow); glow.position.set(0,.5,.6);
-  // ұшқындар мен от бөлшектері
+  // бөлшектер
   const gt = glowTexture();
   const mkPoints = (n, size, color)=>{ const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n*3),3));
     const p = new THREE.Points(g, new THREE.PointsMaterial({size, map:gt, color:C(color), transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, opacity:.95})); scene.add(p); return p; };
   const sparks = mkPoints(14, .2, hi); sparks.visible = false;
-  const FN = 90, fire = dragon ? mkPoints(FN, .55, "#ff6a1a") : null;
+  const drops = kind === "splash" ? mkPoints(40, .16, "#8fd4ff") : null;
+  const FN = 125, fire = isHydra ? mkPoints(FN, .42, "#ff6a1a") : null, fireCore = isHydra ? mkPoints(FN, .22, "#ffe680") : null;
   const fireLife = new Float32Array(FN).map(()=>Math.random());
-  const fireCore = dragon ? mkPoints(FN, .28, "#ffe680") : null;
   cam.aspect = W/H; cam.updateProjectionMatrix();
-  const lookY = (ph + 3.9)/2;
+  const lookY = (ph + 4.2)/2;
   const t0 = performance.now();
   const frame = now=>{
     const t = still ? 9 : (now - t0)/1000;
-    const rise = easeBack(clamp01(t/.55));
-    pod.position.y = ph/2 - (1-rise)*(ph+.4);
-    const wk = clamp01((t-.55)/1.4), walking = t > .55 && t < 1.95;
-    const swing = walking ? Math.sin((t-.55)*11) * .6 : 0;
-    let jump = 0;
-    if(t > 2.55 && t < 7) jump = Math.abs(Math.sin((t-2.55)*5.2)) * .35;
-    hero.visible = t > .5;
-    hero.position.set(lerp(-4.6, 0, easeOut(wk)), ph + jump + (walking ? Math.abs(swing)*.06 : 0), 0);
-    hero.rotation.y = Math.PI/2 * (1 - clamp01((t-1.6)/.45));
-    legs[0].rotation.x = swing; legs[1].rotation.x = -swing;
-    const le = easeBack(clamp01((t-2.05)/.45));
-    arms[0].rotation.set(-swing*.7, 0, lerp(-.12, -(Math.PI + .18), le));
-    arms[1].rotation.set(swing*.7, 0, lerp(.12, Math.PI + .18, le));
-    head.material.rotation = t > 2.55 && t < 7 ? Math.sin(t*5.2)*.06 : 0;
-    reward.visible = t > 2.05;
-    reward.position.set(hero.position.x, hero.position.y + lerp(1.0, 2.52, le), lerp(.45, 0, le));
-    reward.rotation.y = place===1 ? (t-2.05)*1.3 : place<=3 ? Math.sin(t*2)*.45 : t*1.6;
-    glow.intensity = t > 2.4 ? 1.1 + Math.sin(t*4)*.4 : 0;
-    // ұшқындар
-    sparks.visible = t > 2.45;
+    podG.position.y = -(1 - easeBack(clamp01(t/.55)))*(ph+.4);
+    const m = choreo(kind, t);
+    const gy = groundAt(m.x, ph, FLYERS[kind] && !m.landed ? 1 : 0);
+    const AX = m.x, AY = gy + (isHydra ? 10*HS : AS/2) + m.y*AS*.6;
+    animal.visible = !isHydra && m.visible; blob.visible = m.visible;
+    const flip = (m.moving && face.dir < 0 && kind !== "drop") ? -1 : 1;
+    // гидраны жергілікті 2D бірліктен әлемге көшіру
+    const W3 = (u, v, z=0)=>[AX + u*HS*flip, AY - v*HS, .1 + z];
+    let L = null;
+    if(hydra){
+      L = hydraLayout(t, m.moving);
+      const setP = (o, u, v, z)=>{ const p = W3(u, v, z); o.position.set(p[0], p[1], p[2]); o.visible = m.visible; };
+      setP(hydra.bodyM, 0, 3, 0); setP(hydra.belly, 0, 5, 7*HS*.8);
+      hydra.wings.forEach((w, k)=>{ const sd = k ? 1 : -1; setP(w, sd*4, 0, -.15); w.scale.x = flip; w.rotation.z = -sd*L.w*flip; });
+      hydra.tail.forEach((b, i)=>{ const [u, v] = quadPt([6,5],[15,10],[18,3], i/5); setP(b, u, v, -.05); });
+      L.heads.forEach((h, k)=>{
+        const [p0, c, p1] = neckCurve(h);
+        hydra.necks[k].forEach((b, i)=>{ const [u, v] = quadPt(p0, c, p1, i/5); setP(b, u, v, .05); });
+        const hd = hydra.heads[k]; setP(hd, h.x, h.y, .25);
+        const finalDir = h.dir*flip;
+        hd.material.map = finalDir === face.dir ? hydra.texL : hydra.texR;
+      });
+    }
+    tex.repeat.x = flip * (m.sx < 0 ? -1 : 1); tex.offset.x = tex.repeat.x < 0 ? 1 : 0;
+    animal.scale.set(AS*Math.abs(m.sx), AS*m.sy, 1);
+    animal.position.set(AX, AY, .1);
+    animal.material.rotation = -m.rot*flip;
+    blob.position.set(AX, gy + .01, .1); blob.scale.setScalar(Math.max(.35, 1 - m.y*.35)); blob.material.opacity = Math.max(.08, .3 - m.y*.08);
+    // дыбыс толқыны
+    rings.forEach((r,i)=>{
+      const p = m.fx.ring;
+      if(p == null){ r.material.opacity = 0; return; }
+      const q = clamp01(p*1.2 - i*.18), s = .3 + q*1.6;
+      r.scale.setScalar(s); r.material.opacity = .7*(1-q)*(q>0?1:0);
+      r.position.set(AX + face.dir*.55, AY + .35, .3);
+      r.quaternion.copy(cam.quaternion); r.rotateZ(face.dir < 0 ? Math.PI*.7 : -Math.PI*.3);
+    });
+    // су тамшылары
+    if(drops){
+      const sp = m.fx.splashStart ?? m.fx.splashEnd, pa = drops.geometry.attributes.position;
+      drops.visible = sp != null;
+      if(sp != null){ const ox = m.fx.splashStart != null ? -3.2 : 0, oy = m.fx.splashStart != null ? 0 : ph;
+        for(let i=0;i<pa.count;i++){ const a = (i/pa.count)*Math.PI*2, up = .6 + (i%5)*.25;
+          pa.setXYZ(i, ox + Math.cos(a)*sp*1.1, oy + up*sp*2.2 - sp*sp*2.4, Math.sin(a)*sp*1.1); }
+        pa.needsUpdate = true; drops.material.opacity = 1 - sp; }
+    }
+    // айдаһар оты
+    if(fire){
+      const on = !!m.fx.fire, fp = fire.geometry.attributes.position, cp = fireCore.geometry.attributes.position;
+      fire.visible = fireCore.visible = on;
+      if(on){
+        // әр бастың аузынан, сол бас қараған жаққа
+        for(let i=0;i<FN;i++){
+          const h = L.heads[i % 5], [mu, mv] = hydraMouth(h, face), mp = W3(mu, mv, .3), dir = h.dir*flip;
+          fireLife[i] += .024 + (i%7)*.002; if(fireLife[i] > 1) fireLife[i] -= 1;
+          const q = fireLife[i], spread = q*.22;
+          const x = mp[0] + dir*q*1.4, y = mp[1] + Math.sin(i*12.9 + t*9)*spread + q*.1, z = mp[2] + q*.5 + Math.cos(i*7.1 + t*7)*spread;
+          fp.setXYZ(i, x, y, z); cp.setXYZ(i, x - .04*dir, y, z);
+        }
+        fp.needsUpdate = cp.needsUpdate = true; fire.material.opacity = .85 + Math.sin(t*30)*.1;
+      }
+    }
+    // марапат жануардың басынан жоғары көтеріледі
+    const liftStart = Math.max(2.3, T_IN + m.D + .1);
+    reward.visible = t > liftStart;
+    const le = easeBack(clamp01((t - liftStart)/.45));
+    reward.position.set(AX, lerp(AY, AY + (isHydra ? 20*HS + .35 : AS*.5 + .25), le) + Math.sin(t*3)*.06, lerp(.5, .1, le));
+    reward.rotation.y = place===1 ? (t-liftStart)*1.3 : place<=3 ? Math.sin(t*2)*.45 : t*1.6;
+    glow.intensity = t > liftStart + .3 ? 1.1 + Math.sin(t*4)*.4 : 0;
+    sparks.visible = t > liftStart + .35;
     const sp = sparks.geometry.attributes.position;
     for(let i=0;i<sp.count;i++){ const a = t*1.4 + i*Math.PI*2/sp.count, r = .7 + Math.sin(t*3+i)*.12;
       sp.setXYZ(i, reward.position.x + Math.cos(a)*r, reward.position.y + .45 + Math.sin(t*2+i*1.7)*.3, reward.position.z + Math.sin(a)*r); }
     sp.needsUpdate = true;
-    // айдаһар оты
-    if(fire){
-      const on = t > 2.5, fp = fire.geometry.attributes.position, cp = fireCore.geometry.attributes.position;
-      fire.visible = fireCore.visible = on;
-      const F = emojiFacing(avatar), mx = hero.position.x + (F.mx - .5)*1.1, my = hero.position.y + 2.02 - (F.my - .5)*1.1, mz = .3;
-      for(let i=0;i<FN;i++){
-        fireLife[i] += .022 + (i%5)*.002; if(fireLife[i] > 1) fireLife[i] -= 1;
-        const q = fireLife[i], spread = q*.35;
-        const x = mx + F.dir*q*2.2, y = my + Math.sin(i*12.9 + t*9)*spread + q*.15, z = mz + q*.9 + Math.cos(i*7.1 + t*7)*spread;
-        fp.setXYZ(i, x, y, z); cp.setXYZ(i, x - .05, y, z);
-      }
-      fp.needsUpdate = cp.needsUpdate = true;
-      fire.material.opacity = .85 + Math.sin(t*30)*.1;
-    }
-    const ang = Math.sin(t*.35) * .45;
-    cam.position.set(Math.sin(ang)*10.2, lookY + 1.1, Math.cos(ang)*10.2);
-    cam.lookAt(0, lookY, 0);
+    const ang = Math.sin(t*.35) * .4 - .12;
+    cam.position.set(Math.sin(ang)*10.4 - .5, lookY + 1.2, Math.cos(ang)*10.4);
+    cam.lookAt(-.5, lookY, 0);
     R.render(scene, cam);
     if(!still && !win.hidden) r3.raf = requestAnimationFrame(frame);
   };
@@ -1002,14 +1183,15 @@ async function showWin(t, fresh){
   setTimeout(()=>$("win-close").focus(), 3500);
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   clearTimeout(window.__winT1); clearTimeout(window.__winT2);
-  if(!still) for(let k=0;k<5;k++) setTimeout(()=>tone(180 + (k%2)*40, .05, "square", .05), 600 + k*280);
-  window.__winT1 = setTimeout(()=>{ if(!w.hidden && !still) confetti(place<=3 ? place : "n"); }, still ? 0 : 2100);
+  const kindW = MOVES[isDragon(t.name) ? "🐉" : avOf(t)] || "hop", liftAt = Math.max(2.3, T_IN + (MOVE_DUR[kindW] || 1.4) + .1);
+  if(!still){ stepSounds(kindW); setTimeout(()=>{ if(!w.hidden) animalCall(kindW); }, (T_IN + (MOVE_DUR[kindW] || 1.4))*1000); }
+  window.__winT1 = setTimeout(()=>{ if(!w.hidden && !still) confetti(place<=3 ? place : "n"); }, still ? 0 : liftAt*1000 + 50);
   const teamCol = TEAM_COLORS[(ti < 0 ? 0 : ti) % TEAM_COLORS.length];
   if(!scene3d(avOf(t), place, teamCol, still, isDragon(t.name))){
     $("win-3d").hidden = true; $("win-px").hidden = false;
     pixelScene(avOf(t), {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key], place, teamCol, still, isDragon(t.name));
   }
-  window.__winT2 = setTimeout(()=>{ if(!w.hidden) winSound(key==="n" ? "n" : place); }, still ? 0 : 2050);
+  window.__winT2 = setTimeout(()=>{ if(!w.hidden) winSound(key==="n" ? "n" : place); }, still ? 0 : liftAt*1000);
   if(fresh) report({team:t.name, event:"Қорытынды", task:"Барлық сейф", answer:"", result:place+"-орын", points:fmt(elapsed(t)), total:STAGES.length+"/"+STAGES.length+" сейф"});
 }
 

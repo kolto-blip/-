@@ -26,10 +26,11 @@ function doPost(e) {
   try {
     const d = JSON.parse(e.postData.contents);
     lock.waitLock(10000);
+    // Мәтінді «'» белгісімен жазамыз: әйтпесе кесте «00:30» мен «1/5»-ті уақыт пен күнге айналдырып жібереді
+    const txt = v => (v === undefined || v === null || v === '') ? '' : "'" + String(v);
     sheet_().appendRow([
-      new Date(), d.game || '', d.team || '', d.event || '',
-      d.task || '', d.answer || '', d.result || '',
-      d.points === undefined ? '' : d.points, d.total === undefined ? '' : d.total
+      new Date(), txt(d.game), txt(d.team), txt(d.event),
+      txt(d.task), txt(d.answer), txt(d.result), txt(d.points), txt(d.total)
     ]);
     return json_({ ok: true });
   } catch (err) {

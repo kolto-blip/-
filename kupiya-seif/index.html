@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Құпия сейф</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Fira+Sans:wght@400;600&family=JetBrains+Mono:wght@500;800&display=swap">
@@ -311,10 +310,9 @@ function start(data){
   $("btn-reset").onclick = ()=>{ if(armed){ state = fresh(state.teams.length); armed=false; $("btn-reset").textContent="Жаңа ойын"; render(); } else { armed=true; $("btn-reset").textContent="Растау: бәрін өшіру"; setTimeout(()=>{armed=false;$("btn-reset").textContent="Жаңа ойын";},3000); } };
   $("team-name").oninput = e=>{ const t=state.teams[state.active]; t.name = e.target.value || (state.active+1)+"-топ"; renderTabs(); renderLedger(); renderClock(); };
   clearInterval(tick); tick = setInterval(()=>{ renderClock(); renderLedger(); },1000);
-  window.claude?.hot?.snapshot?.(()=>({state}));
   render();
 }
-window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+start({});
 </script>
 </body>
 </html>

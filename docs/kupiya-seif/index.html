@@ -119,6 +119,22 @@ tr.lead td:first-child{color:var(--brass);font-weight:600}
 body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
 .stage-tag{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--brass);color:var(--brass);border-radius:999px;padding:3px 12px}
 .opened .btn{margin-top:10px}
+/* ---- онлайн режим: басқа топтар ---- */
+.join{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:rgba(5,10,12,.85);
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.join-card{width:min(440px,100%);background:linear-gradient(160deg,var(--steel-3),var(--steel-2));border:2px solid var(--rivet);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.join-card h2{margin:0;font-family:var(--f-display);font-weight:700;text-transform:uppercase;font-size:26px;color:var(--brass)}
+.join-card p{margin:0;color:var(--muted)}
+.join-card input{background:#0b1417;border:1.5px solid var(--rivet);border-radius:8px;padding:12px;font-size:20px;font-family:var(--f-display)}
+.join-msg{min-height:22px;font-size:14px;color:var(--no)}
+.join-others{font-size:14px;color:var(--muted)}
+.token.remote{border-style:dashed;border-color:var(--fg)}
+.token.remote b{font-size:11px}
+.live{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12px;color:var(--ok)}
+.live::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok);animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+tr.remote td:first-child::after{content:" · басқа құрылғы";color:var(--muted);font-size:12px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:55;background:var(--brass);color:var(--steel);font-weight:600;border-radius:999px;padding:10px 18px;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:calc(100% - 32px);text-align:center}
 /* ---- станциялардағы шағын ойындар ---- */
 .mg{display:flex;flex-direction:column;gap:10px}
 .mg-btn{border:1.5px solid #b9a77f;background:#fffaf0;color:var(--paper-ink);border-radius:8px;padding:9px 12px;text-align:left;font-size:15px;line-height:1.3;display:flex;align-items:center;gap:8px;min-width:0}
@@ -250,6 +266,18 @@ body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
     </div>
   </nav>
 
+  <div class="join" id="join" hidden role="dialog" aria-modal="true" aria-labelledby="join-title">
+    <form class="join-card" id="join-form">
+      <h2 id="join-title">Құпия сейф</h2>
+      <p>Әр топ өз құрылғысында ойнайды және басқа топтардың жолдағы орнын көріп отырады. Тобыңыздың атауын жазыңыз.</p>
+      <input id="join-name" maxlength="24" placeholder="Мысалы: Барыстар" autocomplete="off" aria-label="Топ атауы">
+      <div class="join-others" id="join-others"></div>
+      <div class="join-msg" id="join-msg"></div>
+      <button class="btn solid" type="submit">Ойынды бастау</button>
+    </form>
+  </div>
+  <div class="toast" id="toast" hidden aria-live="polite"></div>
+
   <section class="route" id="route" aria-label="Сейфке апаратын жол"></section>
 
   <div class="main">
@@ -265,7 +293,7 @@ body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
   </div>
 
   <section class="ledger">
-    <h2>Топтар кестесі</h2>
+    <h2>Топтар кестесі <span class="live" id="live" hidden>онлайн</span></h2>
     <div class="tablewrap"><table>
       <thead><tr><th>Топ</th><th>Кезең</th><th>Станция</th><th>Қате</th><th>Кеңес</th><th>Уақыт (айыппен)</th><th>Сейф</th></tr></thead>
       <tbody id="ledger"></tbody>
@@ -687,14 +715,15 @@ function renderStations(){
 }
 
 function renderLedger(){
-  const rows = state.teams.map(t=>({t, o:openedCount(t), n:solvedAll(t), s:elapsed(t)}))
+  const rows = state.teams.map(t=>({name:t.name, stage:t.stage+1, o:openedCount(t), n:solvedAll(t), s:elapsed(t), wrong:t.wrong, hints:hintCount(t), done:finished(t), remote:false}))
+    .concat(REMOTE.map(r=>({name:r.name, stage:r.stage, o:r.opened, n:Math.min(10,(r.stage-1)*5 + r.solved), s:r.el, wrong:r.wrong, hints:r.hints, done:r.opened>=2, remote:true})))
     .sort((a,b)=> (b.o-a.o) || (b.n-a.n) || (a.s-b.s));
   $("ledger").innerHTML = "";
   rows.forEach((r,k)=>{
     const tr = document.createElement("tr");
-    if(k===0 && r.n>0) tr.className="lead";
-    tr.innerHTML = `<td></td><td class="num">${r.t.stage+1}</td><td class="num">${r.n}/10</td><td class="num">${r.t.wrong}</td><td class="num">${hintCount(r.t)}</td><td class="num">${fmt(r.s)}</td><td><span class="pill ${finished(r.t)?"open":""}">${r.o}/2 ашық</span></td>`;
-    tr.firstChild.textContent = r.t.name;
+    tr.className = (k===0 && r.n>0 ? "lead " : "") + (r.remote ? "remote" : "");
+    tr.innerHTML = `<td></td><td class="num">${r.stage}</td><td class="num">${r.n}/10</td><td class="num">${r.wrong}</td><td class="num">${r.hints}</td><td class="num">${fmt(r.s)}</td><td><span class="pill ${r.done?"open":""}">${r.o}/2 ашық</span></td>`;
+    tr.firstChild.textContent = r.name;
     $("ledger").appendChild(tr);
   });
 }
@@ -748,24 +777,27 @@ function renderRoute(){
   });
   // топ белгілері
   const tok = $("tokens");
-  while(tok.children.length > state.teams.length) tok.lastChild.remove();
-  while(tok.children.length < state.teams.length){ const d=document.createElement("div"); d.className="token"; d.innerHTML="<b></b>"; tok.appendChild(d); }
-  const at = state.teams.map(u => u.stage > st ? n : u.stage < st ? 0 : (cur(u).opened ? n : solvedIn(cur(u))));
+  const all = state.teams.map((u,k)=>({name:u.name, local:true, k,
+      at: u.stage > st ? n : u.stage < st ? 0 : (cur(u).opened ? n : solvedIn(cur(u))), stage:u.stage}))
+    .concat(REMOTE.map(r=>({name:r.name, local:false,
+      at: r.stage-1 > st ? n : r.stage-1 < st ? 0 : (r.opened >= r.stage ? n : r.solved), stage:r.stage-1})));
+  while(tok.children.length > all.length) tok.lastChild.remove();
+  while(tok.children.length < all.length){ const d=document.createElement("div"); d.className="token"; d.innerHTML="<b></b>"; tok.appendChild(d); }
   const groups = {};
-  at.forEach((p,k)=>{ (groups[p] = groups[p] || []).push(k); });
-  state.teams.forEach((u,k)=>{
-    const d = tok.children[k], p = pts[at[k]], g = groups[at[k]], j = g.indexOf(k);
+  all.forEach((u,k)=>{ (groups[u.at] = groups[u.at] || []).push(k); });
+  all.forEach((u,k)=>{
+    const d = tok.children[k], p = pts[u.at], g = groups[u.at], j = g.indexOf(k);
     const dx = (j - (g.length-1)/2) * 26;
     d.style.left = `calc(${p.x}% + ${dx}px)`;
     d.style.top = `calc(${p.y}% - 40px)`;
-    d.style.background = TEAM_COLORS[k % TEAM_COLORS.length];
-    d.className = "token" + (k===state.active ? " me" : "") + (u.stage !== st ? " away" : "");
+    d.style.background = u.local ? TEAM_COLORS[u.k % TEAM_COLORS.length] : colorFor(u.name);
+    d.className = "token" + (u.local && u.k===state.active ? " me" : "") + (u.local ? "" : " remote") + (u.stage !== st ? " away" : "");
     d.title = u.name + (u.stage !== st ? " · " + (u.stage+1) + "-кезеңде" : "");
-    d.firstChild.textContent = k+1;
+    d.firstChild.textContent = u.local && !ONLINE ? u.k+1 : [...u.name.trim()][0]?.toUpperCase() || "?";
   });
 }
 
-function render(){ renderTabs(); renderRoute(); renderSafe(); renderStations(); renderLedger(); renderClock(); }
+function render(){ renderTabs(); renderRoute(); renderSafe(); renderStations(); renderLedger(); renderClock(); saveState(); }
 
 function setTeams(n){
   n = Math.max(2,Math.min(5,n));
@@ -775,16 +807,101 @@ function setTeams(n){
   render();
 }
 
+/* ---- онлайн режим: әр топ өз құрылғысында, басқалары кесте арқылы көрінеді ---- */
+const ONLINE = !!RESULTS;
+const WINDOW_MS = 3*60*60*1000;   // соңғы 3 сағаттағы ойындар ғана ескеріледі
+let REMOTE = [], remoteSeen = {}, toastTimer = null, polling = false;
+function colorFor(name){ let h = 0; for(const c of name) h = (h*31 + c.charCodeAt(0)) >>> 0; return TEAM_COLORS[h % TEAM_COLORS.length]; }
+const parseT = v => { const m = /^(\d+):(\d\d)$/.exec(String(v||"")); return m ? (+m[1])*60 + (+m[2]) : 0; };
+async function fetchRows(){
+  const res = await fetch(RESULTS, {cache:"no-store"});
+  const data = await res.json();
+  return Array.isArray(data) ? data.slice(1) : [];
+}
+function teamsFromRows(rows){
+  const now = Date.now(), map = {};
+  for(const r of rows){
+    if(r[1] !== GAME_NAME) continue;
+    const time = Date.parse(r[0]); if(!(now - time < WINDOW_MS)) continue;
+    const name = String(r[2]||"").trim(); if(!name) continue;
+    const o = map[name] = map[name] || {name, stage:1, solved:0, opened:0, el:0, wrong:0, hints:0};
+    const total = String(r[8]||"");
+    let m;
+    if((m = /^(\d)-кезең (\d)\/5$/.exec(total))){ o.stage = +m[1]; o.solved = +m[2]; }
+    if(r[3]==="Сейф" && r[6]==="ашылды" && (m = /^(\d)\/2 сейф$/.exec(total))) o.opened = +m[1];
+    if(r[3]==="Кезең" && r[4]==="2-кезең басталды"){ o.stage = 2; o.solved = 0; }
+    if(r[6]==="қате") o.wrong++;
+    if(r[3]==="Кеңес") o.hints++;
+    o.el = Math.max(o.el, parseT(r[7]));
+  }
+  return Object.values(map);
+}
+function toast(text){
+  const el = $("toast"); el.textContent = text; el.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>{ el.hidden = true; }, 5000);
+}
+async function pollRemote(){
+  if(!ONLINE || polling || !state.joined) return;
+  polling = true;
+  try{
+    const mine = new Set(state.teams.map(t=>t.name));
+    const list = teamsFromRows(await fetchRows()).filter(r=>!mine.has(r.name));
+    for(const r of list){
+      const before = remoteSeen[r.name];
+      if(before !== undefined && r.opened > before) toast(`«${r.name}» тобы ${r.opened}-сейфті ашты!`);
+      remoteSeen[r.name] = r.opened;
+    }
+    REMOTE = list;
+    $("live").hidden = false;
+    renderRoute(); renderLedger();
+  }catch(e){ $("live").hidden = true; }
+  polling = false;
+}
+function saveState(){ if(ONLINE && state.joined) LS.set("seif-state", JSON.stringify({saved:Date.now(), state})); }
+function loadState(){
+  try{ const d = JSON.parse(LS.get("seif-state")||"null"); if(d && Date.now()-d.saved < WINDOW_MS && d.state && d.state.joined) return d.state; }catch(e){}
+  return null;
+}
+async function showJoin(){
+  $("join").hidden = false; $("join-msg").textContent = ""; $("join-name").value = "";
+  setTimeout(()=>$("join-name").focus(), 50);
+  let taken = [];
+  try{ taken = teamsFromRows(await fetchRows()).map(r=>r.name); }catch(e){}
+  $("join-others").textContent = taken.length ? "Ойындағы топтар: " + taken.join(", ") : "";
+  $("join-form").onsubmit = e=>{
+    e.preventDefault();
+    const name = $("join-name").value.trim();
+    if(!name){ $("join-msg").textContent = "Топ атауын жазыңыз."; return; }
+    if(taken.some(x=>x.toLowerCase()===name.toLowerCase())){ $("join-msg").textContent = "Бұл атау бос емес. Басқа атау таңдаңыз."; return; }
+    state = {teams:[Object.assign(newTeam(0), {name})], active:0, joined:true};
+    $("join").hidden = true;
+    report({team:name, event:"Кезең", task:"Ойынға қосылды", answer:"", result:"", points:"00:00", total:"1-кезең 0/5"});
+    render(); pollRemote();
+  };
+}
+
 let armed = false;
 function start(){
   state = fresh(4);
+  if(ONLINE){
+    document.querySelector(".counter").querySelectorAll("span,button:not(.btn),b").forEach(el=>el.hidden = true);
+    $("team-name").readOnly = true;
+    const saved = loadState();
+    if(saved) state = saved; else showJoin();
+  }
   $("team-minus").onclick = ()=>setTeams(state.teams.length-1);
   $("team-plus").onclick = ()=>setTeams(state.teams.length+1);
-  $("btn-reset").onclick = ()=>{ if(armed){ state = fresh(state.teams.length); armed=false; $("btn-reset").textContent="Жаңа ойын"; render(); } else { armed=true; $("btn-reset").textContent="Растау: бәрін өшіру"; setTimeout(()=>{armed=false;$("btn-reset").textContent="Жаңа ойын";},3000); } };
-  $("team-name").oninput = e=>{ const t=state.teams[state.active]; t.name = e.target.value || (state.active+1)+"-топ"; renderTabs(); renderLedger(); renderClock(); };
-  clearInterval(tick); tick = setInterval(()=>{ renderClock(); renderLedger(); },1000);
+  $("btn-reset").onclick = ()=>{
+    if(!armed){ armed=true; $("btn-reset").textContent="Растау: бәрін өшіру"; setTimeout(()=>{armed=false;$("btn-reset").textContent="Жаңа ойын";},3000); return; }
+    armed=false; $("btn-reset").textContent="Жаңа ойын";
+    if(ONLINE){ LS.set("seif-state",""); state = fresh(1); REMOTE = []; render(); showJoin(); }
+    else { state = fresh(state.teams.length); render(); }
+  };
+  $("team-name").oninput = e=>{ if(ONLINE) return; const t=state.teams[state.active]; t.name = e.target.value || (state.active+1)+"-топ"; renderTabs(); renderLedger(); renderClock(); };
+  clearInterval(tick); tick = setInterval(()=>{ renderClock(); renderLedger(); saveState(); },1000);
+  if(ONLINE) setInterval(pollRemote, 8000);
   flush();
-  render();
+  render(); pollRemote();
 }
 start();
 </script>

@@ -616,7 +616,9 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("vault").hid
 /* ---- аватарлар ---- */
 const AVATARS = [["🐆","Ілбіс"],["🦅","Бүркіт"],["🐺","Қасқыр"],["🐎","Тұлпар"],["🦁","Арыстан"],["🐫","Түйе"],
                  ["🦉","Үкі"],["🦊","Түлкі"],["🐻","Аю"],["🦌","Бұғы"],["🐢","Тасбақа"],["🐬","Дельфин"]];
-const avOf = t => t.avatar || AVATARS[0][0];
+const isDragon = n => /драко?н|dragon/i.test(String(n || ""));          // «Дракондар» деген топтың басы — айдаһар
+const avOf = t => isDragon(t.name) ? "🐲" : (t.avatar || AVATARS[0][0]);
+const remAv = r => isDragon(r.name) ? "🐲" : (r.avatar || "");
 function avatarGrid(box, selected, onPick){
   box.innerHTML = "";
   AVATARS.forEach(([e,label])=>{
@@ -669,7 +671,7 @@ function shade(hex, f){
   const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex); if(!m) return hex;
   return "#" + [1,2,3].map(i=>Math.max(0,Math.min(255,Math.round(parseInt(m[i],16)*f))).toString(16).padStart(2,"0")).join("");
 }
-function pixelScene(avatar, reward, place, teamColor, still){
+function pixelScene(avatar, reward, place, teamColor, still, dragon){
   const cv = $("win-px"), ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
   ctx.imageSmoothingEnabled = false;
   const win = $("win");
@@ -723,6 +725,20 @@ function pixelScene(avatar, reward, place, teamColor, still){
       else { ctx.fillRect(hx-7, top-8, 2, 9); ctx.fillRect(hx+5, top-8, 2, 9); ctx.fillStyle = SKIN; ctx.fillRect(hx-7, top-10, 2, 2); ctx.fillRect(hx+5, top-10, 2, 2); }
       // бас — топтың аватары
       ctx.drawImage(head, hx-8, top-15);
+      // айдаһар от бүркеді
+      if(dragon && t > 2.5){
+        const fl = Math.floor(t*12) % 3, mx = hx + 8, my = top - 6;
+        const FIRE = ["#fff3a0","#ffd23f","#ff8a1f","#e8401c"];
+        const len = 9 + fl*2;
+        for(let k=0;k<len;k++){
+          const spread = Math.floor(k/3);
+          const c = FIRE[Math.min(3, Math.floor(k/(len/4)))];
+          ctx.fillStyle = c;
+          ctx.fillRect(mx + k, my - Math.floor(spread/2) + ((k+fl)%2), 1, 1 + spread);
+        }
+        ctx.fillStyle = "rgba(120,120,120,.6)";
+        if(fl===2) ctx.fillRect(mx + len + 1, my - 3, 2, 2);
+      }
       // кубок кеуде тұсынан бастың үстіне көтеріледі
       if(t > 2.05){
         const cyTop = Math.round((top+1) + ((top-28) - (top+1))*lift);
@@ -744,7 +760,7 @@ function pixelScene(avatar, reward, place, teamColor, still){
 let winRAF = null;
 function standings(){
   const list = state.teams.filter(finished).map(u=>({name:avOf(u)+" "+u.name, s:elapsed(u), me:false, local:true, ref:u}))
-    .concat((typeof REMOTE!=="undefined" ? REMOTE : []).filter(r=>r.opened>=STAGES.length).map(r=>({name:(r.avatar ? r.avatar+" " : "")+r.name, s:r.el, me:false, local:false})));
+    .concat((typeof REMOTE!=="undefined" ? REMOTE : []).filter(r=>r.opened>=STAGES.length).map(r=>({name:(remAv(r) ? remAv(r)+" " : "")+r.name, s:r.el, me:false, local:false})));
   return list.sort((a,b)=>a.s-b.s);
 }
 function confetti(place){
@@ -805,7 +821,7 @@ async function showWin(t, fresh){
   clearTimeout(window.__winT1); clearTimeout(window.__winT2);
   if(!still) for(let k=0;k<5;k++) setTimeout(()=>tone(180 + (k%2)*40, .05, "square", .05), 600 + k*280);
   window.__winT1 = setTimeout(()=>{ if(!w.hidden && !still) confetti(place<=3 ? place : "n"); }, still ? 0 : 2100);
-  pixelScene(avOf(t), {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key], place, TEAM_COLORS[(ti < 0 ? 0 : ti) % TEAM_COLORS.length], still);
+  pixelScene(avOf(t), {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key], place, TEAM_COLORS[(ti < 0 ? 0 : ti) % TEAM_COLORS.length], still, isDragon(t.name));
   window.__winT2 = setTimeout(()=>{ if(!w.hidden) winSound(key==="n" ? "n" : place); }, still ? 0 : 2050);
   if(fresh) report({team:t.name, event:"Қорытынды", task:"Барлық сейф", answer:"", result:place+"-орын", points:fmt(elapsed(t)), total:STAGES.length+"/"+STAGES.length+" сейф"});
 }
@@ -1026,7 +1042,7 @@ function renderStations(){
 
 function renderLedger(){
   const rows = state.teams.map(t=>({name:avOf(t)+" "+t.name, stage:t.stage+1, o:openedCount(t), n:solvedAll(t), s:elapsed(t), wrong:t.wrong, hints:hintCount(t), done:finished(t), remote:false}))
-    .concat(REMOTE.map(r=>({name:(r.avatar ? r.avatar+" " : "")+r.name, stage:r.stage, o:r.opened, n:Math.min(STAGES.length*5,(r.stage-1)*5 + r.solved), s:r.el, wrong:r.wrong, hints:r.hints, done:r.opened>=STAGES.length, remote:true})))
+    .concat(REMOTE.map(r=>({name:(remAv(r) ? remAv(r)+" " : "")+r.name, stage:r.stage, o:r.opened, n:Math.min(STAGES.length*5,(r.stage-1)*5 + r.solved), s:r.el, wrong:r.wrong, hints:r.hints, done:r.opened>=STAGES.length, remote:true})))
     .sort((a,b)=> (b.o-a.o) || (b.n-a.n) || (a.s-b.s));
   $("ledger").innerHTML = "";
   rows.forEach((r,k)=>{
@@ -1089,7 +1105,7 @@ function renderRoute(){
   const tok = $("tokens");
   const all = state.teams.map((u,k)=>({name:u.name, avatar:avOf(u), local:true, k,
       at: u.stage > st ? n : u.stage < st ? 0 : (cur(u).opened ? n : solvedIn(cur(u))), stage:u.stage}))
-    .concat(REMOTE.map(r=>({name:r.name, avatar:r.avatar, local:false,
+    .concat(REMOTE.map(r=>({name:r.name, avatar:remAv(r), local:false,
       at: r.stage-1 > st ? n : r.stage-1 < st ? 0 : (r.opened >= r.stage ? n : r.solved), stage:r.stage-1})));
   while(tok.children.length > all.length) tok.lastChild.remove();
   while(tok.children.length < all.length){ const d=document.createElement("div"); d.className="token"; d.innerHTML="<b></b>"; tok.appendChild(d); }
@@ -1161,7 +1177,7 @@ async function pollRemote(){
     const list = teamsFromRows(await fetchRows()).filter(r=>!mine.has(r.name));
     for(const r of list){
       const before = remoteSeen[r.name];
-      if(before !== undefined && r.opened > before) toast(`${r.avatar ? r.avatar+" " : ""}«${r.name}» тобы ${r.opened}-сейфті ашты!`);
+      if(before !== undefined && r.opened > before) toast(`${remAv(r) ? remAv(r)+" " : ""}«${r.name}» тобы ${r.opened}-сейфті ашты!`);
       remoteSeen[r.name] = r.opened;
     }
     REMOTE = list;
@@ -1185,10 +1201,16 @@ async function showJoin(){
   fetchRows().then(rows=>{
     const list = teamsFromRows(rows);
     taken = list.map(r=>r.name);
-    $("join-others").textContent = list.length ? "Ойындағы топтар: " + list.map(r=>(r.avatar ? r.avatar+" " : "")+r.name).join(", ") : "";
+    $("join-others").textContent = list.length ? "Ойындағы топтар: " + list.map(r=>(remAv(r) ? remAv(r)+" " : "")+r.name).join(", ") : "";
   }).catch(()=>{});
+  $("join-name").oninput = ()=>{
+    const d = isDragon($("join-name").value);
+    $("join-msg").textContent = d ? "🐲 Айдаһарлар! Кейіпкеріңіздің басы айдаһар болады." : "";
+    $("join-msg").style.color = d ? "var(--ok)" : "";
+  };
   $("join-form").onsubmit = e=>{
     e.preventDefault();
+    $("join-msg").style.color = "";
     const name = $("join-name").value.trim();
     if(!name){ $("join-msg").textContent = "Топ атауын жазыңыз."; return; }
     if(taken.some(x=>x.toLowerCase()===name.toLowerCase())){ $("join-msg").textContent = "Бұл атау бос емес. Басқа атау таңдаңыз."; return; }
@@ -1218,7 +1240,7 @@ function start(){
     if(ONLINE){ LS.set("seif-state",""); state = fresh(1); REMOTE = []; render(); showJoin(); }
     else { state = fresh(state.teams.length); render(); }
   };
-  $("team-name").oninput = e=>{ if(ONLINE) return; const t=state.teams[state.active]; t.name = e.target.value || (state.active+1)+"-топ"; renderTabs(); renderLedger(); renderClock(); };
+  $("team-name").oninput = e=>{ if(ONLINE) return; const t=state.teams[state.active]; t.name = e.target.value || (state.active+1)+"-топ"; renderTabs(); renderLedger(); renderClock(); renderRoute(); $("team-av").textContent = avOf(t); };
   clearInterval(tick); tick = setInterval(()=>{ renderClock(); renderLedger(); saveState(); },1000);
   if(ONLINE) setInterval(pollRemote, 8000);
   flush();

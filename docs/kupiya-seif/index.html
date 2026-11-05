@@ -120,6 +120,29 @@ body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
 body[data-stage="3"]{--brass:#c4a0ff;--brass-soft:#6d4fa8}
 .stage-tag{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--brass);color:var(--brass);border-radius:999px;padding:3px 12px}
 .opened .btn{margin-top:10px}
+/* ---- аватарлар ---- */
+.av-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+@media (max-width:420px){.av-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.av-opt{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 2px;border-radius:12px;border:2px solid var(--rivet);background:#0b1417;color:var(--muted);font-size:11px}
+.av-opt span{font-size:30px;line-height:1.1;transition:transform .2s}
+.av-opt:hover span{transform:scale(1.15)}
+.av-opt[aria-pressed="true"]{border-color:var(--brass);background:color-mix(in srgb,var(--brass) 18%,#0b1417);color:var(--fg)}
+.av-opt[aria-pressed="true"] span{animation:avbounce .5s ease}
+@keyframes avbounce{40%{transform:scale(1.35) rotate(-8deg)}100%{transform:none}}
+.av-btn{align-self:center;width:84px;height:84px;border-radius:50%;border:3px solid var(--brass);background:radial-gradient(circle at 40% 35%,var(--steel-3),#0b1417);font-size:46px;line-height:1;display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.av-btn::after{content:"✎";position:absolute;right:-2px;bottom:-2px;width:26px;height:26px;border-radius:50%;background:var(--brass);color:var(--steel);font-size:14px;display:flex;align-items:center;justify-content:center}
+.av-btn:disabled{cursor:default}
+.av-btn:disabled::after{display:none}
+.av-pick{position:fixed;inset:0;z-index:65;display:flex;align-items:center;justify-content:center;background:rgba(5,10,12,.8);
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.av-pick .join-card{gap:14px}
+.token.av{width:34px;height:34px;margin:-17px 0 0 -17px;background:var(--steel-2)!important;border-width:3px}
+.token.av.me{width:42px;height:42px;margin:-21px 0 0 -21px}
+.token.av b{font-size:18px;color:inherit}
+.token.av.me b{font-size:22px}
+.token.av.remote b,.token.remote.av b{font-size:18px}
+.tab .av{font-size:18px;line-height:1}
+.win-av{font-size:30px;vertical-align:middle;margin-right:6px}
 /* ---- жеңіс анимациясы ---- */
 .win{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;overflow:hidden;
   background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--medal) 30%,#0b1417),#05090b 75%);
@@ -307,9 +330,10 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
   </nav>
 
   <div class="join" id="join" hidden role="dialog" aria-modal="true" aria-labelledby="join-title">
-    <form class="join-card" id="join-form">
+    <form class="join-card" id="join-form" onsubmit="return false">
       <h2 id="join-title">Құпия сейф</h2>
-      <p>Әр топ өз құрылғысында ойнайды және басқа топтардың жолдағы орнын көріп отырады. Тобыңыздың атауын жазыңыз.</p>
+      <p>Әр топ өз құрылғысында ойнайды және басқа топтардың жолдағы орнын көріп отырады. Аватар таңдап, тобыңыздың атауын жазыңыз.</p>
+      <div class="av-grid" id="join-av" role="group" aria-label="Аватар"></div>
       <input id="join-name" maxlength="24" placeholder="Мысалы: Барыстар" autocomplete="off" aria-label="Топ атауы">
       <div class="join-others" id="join-others"></div>
       <div class="join-msg" id="join-msg"></div>
@@ -317,6 +341,13 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
     </form>
   </div>
   <div class="toast" id="toast" hidden aria-live="polite"></div>
+  <div class="av-pick" id="av-pick" hidden role="dialog" aria-modal="true" aria-labelledby="av-pick-title">
+    <div class="join-card">
+      <h2 id="av-pick-title">Аватар таңдаңыз</h2>
+      <div class="av-grid" id="av-pick-grid" role="group" aria-label="Аватар"></div>
+      <button class="btn ghost" id="av-pick-close" type="button">Жабу</button>
+    </div>
+  </div>
   <div class="win" id="win" hidden role="dialog" aria-modal="true" aria-labelledby="win-place">
     <canvas id="win-canvas" aria-hidden="true"></canvas>
     <div class="win-rays" aria-hidden="true"></div>
@@ -338,6 +369,7 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
     <section class="safe" aria-label="Сейф">
       <div class="stage-tag" id="stage-tag">1-кезең</div>
       <div class="safe-label">Сейф иесі</div>
+      <button class="av-btn" id="team-av" type="button" aria-label="Аватарды ауыстыру">🐆</button>
       <div class="team-name"><input id="team-name" aria-label="Топ атауы" maxlength="24"></div>
       <div class="wheels" id="wheels"></div>
       <div id="lock-area"></div>
@@ -514,7 +546,7 @@ function newStage(st){
   return {code:st.map(()=>Math.floor(Math.random()*10)), solved:st.map(()=>false),
     hints:st.map(()=>false), msgs:st.map(()=>""), prog:st.map(()=>null), opened:false, lockMsg:""};
 }
-function newTeam(i){ return {name:(i+1)+"-топ", stage:0, stages:STAGES.map(newStage), wrong:0, start:null, end:null}; }
+function newTeam(i){ return {name:(i+1)+"-топ", avatar:AVATARS[i % AVATARS.length][0], stage:0, stages:STAGES.map(newStage), wrong:0, start:null, end:null}; }
 function fresh(n){ return {teams:Array.from({length:n},(_,i)=>newTeam(i)), active:0}; }
 
 const cur = t => t.stages[t.stage];
@@ -585,11 +617,36 @@ function playVault(code, final, timeText, onDone, stageIdx){
 }
 document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("vault").hidden && $("vault").classList.contains("open")) $("vault-btn").click(); });
 
+/* ---- аватарлар ---- */
+const AVATARS = [["🐆","Ілбіс"],["🦅","Бүркіт"],["🐺","Қасқыр"],["🐎","Тұлпар"],["🦁","Арыстан"],["🐫","Түйе"],
+                 ["🦉","Үкі"],["🦊","Түлкі"],["🐻","Аю"],["🦌","Бұғы"],["🐢","Тасбақа"],["🐬","Дельфин"]];
+const avOf = t => t.avatar || AVATARS[0][0];
+function avatarGrid(box, selected, onPick){
+  box.innerHTML = "";
+  AVATARS.forEach(([e,label])=>{
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "av-opt"; b.setAttribute("aria-pressed", e===selected);
+    b.innerHTML = `<span>${e}</span>${label}`; b.title = label;
+    b.onclick = ()=>{ box.querySelectorAll(".av-opt").forEach(x=>x.setAttribute("aria-pressed", x===b)); onPick(e); tone(880,.06,"triangle",.06); };
+    box.appendChild(b);
+  });
+}
+function openAvatarPicker(){
+  const t = state.teams[state.active];
+  avatarGrid($("av-pick-grid"), avOf(t), e=>{
+    t.avatar = e;
+    if(ONLINE) report({team:t.name, event:"Кезең", task:"Аватар", answer:e, result:"", points:fmt(elapsed(t)), total:stageLabel(t)+" "+cur(t).solved.filter(Boolean).length+"/5"});
+    render();
+    setTimeout(()=>{ $("av-pick").hidden = true; }, 250);
+  });
+  $("av-pick").hidden = false;
+}
+
 /* ---- жеңіс анимациясы: орынға қарай ---- */
 let winRAF = null;
 function standings(){
-  const list = state.teams.filter(finished).map(u=>({name:u.name, s:elapsed(u), me:false, local:true, ref:u}))
-    .concat((typeof REMOTE!=="undefined" ? REMOTE : []).filter(r=>r.opened>=STAGES.length).map(r=>({name:r.name, s:r.el, me:false, local:false})));
+  const list = state.teams.filter(finished).map(u=>({name:avOf(u)+" "+u.name, s:elapsed(u), me:false, local:true, ref:u}))
+    .concat((typeof REMOTE!=="undefined" ? REMOTE : []).filter(r=>r.opened>=STAGES.length).map(r=>({name:(r.avatar ? r.avatar+" " : "")+r.name, s:r.el, me:false, local:false})));
   return list.sort((a,b)=>a.s-b.s);
 }
 function confetti(place){
@@ -626,14 +683,14 @@ async function showWin(t, fresh){
   if(typeof pollRemote === "function" && ONLINE){ try{ await Promise.race([pollRemote(), new Promise(r=>setTimeout(r,2500))]); }catch(e){} }
   const list = standings();
   let idx = list.findIndex(x=>x.local && x.ref===t);
-  if(idx < 0){ list.push({name:t.name, s:elapsed(t), local:true, ref:t}); list.sort((a,b)=>a.s-b.s); idx = list.findIndex(x=>x.ref===t); }
+  if(idx < 0){ list.push({name:avOf(t)+" "+t.name, s:elapsed(t), local:true, ref:t}); list.sort((a,b)=>a.s-b.s); idx = list.findIndex(x=>x.ref===t); }
   list[idx].me = true;
   const place = idx + 1, key = place<=3 ? String(place) : "n";
   const w = $("win"); w.dataset.place = key;
   $("win-num").textContent = place;
   $("win-emoji").textContent = {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key];
   $("win-place").textContent = place + "-орын!";
-  $("win-team").textContent = t.name;
+  $("win-team").innerHTML = `<span class="win-av">${avOf(t)}</span>`; $("win-team").append(t.name);
   $("win-text").textContent = {
     1:"Жеңімпаз! Барлық сейфті ең жылдам аштыңыз.",
     2:"Керемет нәтиже! Жеңіске бір қадам ғана қалды.",
@@ -661,7 +718,7 @@ function renderTabs(){
     b.setAttribute("aria-selected", i===state.active);
     b.style.boxShadow = `inset 4px 0 0 ${TEAM_COLORS[i % TEAM_COLORS.length]}`;
     b.innerHTML = `<span></span><span class="dots">${finished(t) ? STAGES.length+"/"+STAGES.length+" АШЫҚ" : (t.stage+1)+"К "+cur(t).solved.map(s=>s?"●":"○").join("")}</span>`;
-    b.firstChild.textContent = t.name;
+    b.firstChild.innerHTML = `<span class="av">${avOf(t)}</span> `; b.firstChild.append(t.name);
     b.onclick = ()=>{ state.active=i; render(); };
     tabs.appendChild(b);
   });
@@ -672,6 +729,7 @@ function renderSafe(){
   document.body.dataset.stage = t.stage+1;
   $("stage-tag").textContent = stageLabel(t) + " · " + (t.stage+1) + "-сейф";
   $("team-name").value = t.name;
+  $("team-av").textContent = avOf(t);
   $("wheels").innerHTML = sg.code.map((d,i)=>`<div class="wheel ${sg.solved[i]?"got":""} ${i===justSolved?"pop":""}"><b>${sg.solved[i]?d:"?"}</b><span>${i+1}-СТ</span></div>`).join("");
   justSolved = -1;
   const all = sg.solved.every(Boolean), la = $("lock-area");
@@ -866,8 +924,8 @@ function renderStations(){
 }
 
 function renderLedger(){
-  const rows = state.teams.map(t=>({name:t.name, stage:t.stage+1, o:openedCount(t), n:solvedAll(t), s:elapsed(t), wrong:t.wrong, hints:hintCount(t), done:finished(t), remote:false}))
-    .concat(REMOTE.map(r=>({name:r.name, stage:r.stage, o:r.opened, n:Math.min(STAGES.length*5,(r.stage-1)*5 + r.solved), s:r.el, wrong:r.wrong, hints:r.hints, done:r.opened>=STAGES.length, remote:true})))
+  const rows = state.teams.map(t=>({name:avOf(t)+" "+t.name, stage:t.stage+1, o:openedCount(t), n:solvedAll(t), s:elapsed(t), wrong:t.wrong, hints:hintCount(t), done:finished(t), remote:false}))
+    .concat(REMOTE.map(r=>({name:(r.avatar ? r.avatar+" " : "")+r.name, stage:r.stage, o:r.opened, n:Math.min(STAGES.length*5,(r.stage-1)*5 + r.solved), s:r.el, wrong:r.wrong, hints:r.hints, done:r.opened>=STAGES.length, remote:true})))
     .sort((a,b)=> (b.o-a.o) || (b.n-a.n) || (a.s-b.s));
   $("ledger").innerHTML = "";
   rows.forEach((r,k)=>{
@@ -928,9 +986,9 @@ function renderRoute(){
   });
   // топ белгілері
   const tok = $("tokens");
-  const all = state.teams.map((u,k)=>({name:u.name, local:true, k,
+  const all = state.teams.map((u,k)=>({name:u.name, avatar:avOf(u), local:true, k,
       at: u.stage > st ? n : u.stage < st ? 0 : (cur(u).opened ? n : solvedIn(cur(u))), stage:u.stage}))
-    .concat(REMOTE.map(r=>({name:r.name, local:false,
+    .concat(REMOTE.map(r=>({name:r.name, avatar:r.avatar, local:false,
       at: r.stage-1 > st ? n : r.stage-1 < st ? 0 : (r.opened >= r.stage ? n : r.solved), stage:r.stage-1})));
   while(tok.children.length > all.length) tok.lastChild.remove();
   while(tok.children.length < all.length){ const d=document.createElement("div"); d.className="token"; d.innerHTML="<b></b>"; tok.appendChild(d); }
@@ -944,7 +1002,9 @@ function renderRoute(){
     d.style.background = u.local ? TEAM_COLORS[u.k % TEAM_COLORS.length] : colorFor(u.name);
     d.className = "token" + (u.local && u.k===state.active ? " me" : "") + (u.local ? "" : " remote") + (u.stage !== st ? " away" : "");
     d.title = u.name + (u.stage !== st ? " · " + (u.stage+1) + "-кезеңде" : "");
-    d.firstChild.textContent = u.local && !ONLINE ? u.k+1 : [...u.name.trim()][0]?.toUpperCase() || "?";
+    d.firstChild.textContent = u.avatar || [...u.name.trim()][0]?.toUpperCase() || "?";
+    if(u.avatar) d.classList.add("av");
+    d.style.borderColor = u.avatar ? (u.local ? TEAM_COLORS[u.k % TEAM_COLORS.length] : colorFor(u.name)) : "";
   });
 }
 
@@ -975,7 +1035,8 @@ function teamsFromRows(rows){
     if(r[1] !== GAME_NAME) continue;
     const time = Date.parse(r[0]); if(!(now - time < WINDOW_MS)) continue;
     const name = String(r[2]||"").trim(); if(!name) continue;
-    const o = map[name] = map[name] || {name, stage:1, solved:0, opened:0, el:0, wrong:0, hints:0};
+    const o = map[name] = map[name] || {name, avatar:"", stage:1, solved:0, opened:0, el:0, wrong:0, hints:0};
+    if(r[3]==="Кезең" && (r[4]==="Ойынға қосылды" || r[4]==="Аватар") && r[5]) o.avatar = String(r[5]);
     const total = String(r[8]||"");
     let m;
     if((m = /^(\d)-кезең (\d)\/5$/.exec(total))){ o.stage = +m[1]; o.solved = +m[2]; }
@@ -999,7 +1060,7 @@ async function pollRemote(){
     const list = teamsFromRows(await fetchRows()).filter(r=>!mine.has(r.name));
     for(const r of list){
       const before = remoteSeen[r.name];
-      if(before !== undefined && r.opened > before) toast(`«${r.name}» тобы ${r.opened}-сейфті ашты!`);
+      if(before !== undefined && r.opened > before) toast(`${r.avatar ? r.avatar+" " : ""}«${r.name}» тобы ${r.opened}-сейфті ашты!`);
       remoteSeen[r.name] = r.opened;
     }
     REMOTE = list;
@@ -1017,16 +1078,22 @@ async function showJoin(){
   $("join").hidden = false; $("join-msg").textContent = ""; $("join-name").value = "";
   setTimeout(()=>$("join-name").focus(), 50);
   let taken = [];
-  try{ taken = teamsFromRows(await fetchRows()).map(r=>r.name); }catch(e){}
-  $("join-others").textContent = taken.length ? "Ойындағы топтар: " + taken.join(", ") : "";
+  let joinAv = AVATARS[Math.floor(Math.random()*AVATARS.length)][0];
+  avatarGrid($("join-av"), joinAv, e=>{ joinAv = e; });
+  $("join-others").textContent = "";
+  fetchRows().then(rows=>{
+    const list = teamsFromRows(rows);
+    taken = list.map(r=>r.name);
+    $("join-others").textContent = list.length ? "Ойындағы топтар: " + list.map(r=>(r.avatar ? r.avatar+" " : "")+r.name).join(", ") : "";
+  }).catch(()=>{});
   $("join-form").onsubmit = e=>{
     e.preventDefault();
     const name = $("join-name").value.trim();
     if(!name){ $("join-msg").textContent = "Топ атауын жазыңыз."; return; }
     if(taken.some(x=>x.toLowerCase()===name.toLowerCase())){ $("join-msg").textContent = "Бұл атау бос емес. Басқа атау таңдаңыз."; return; }
-    state = {teams:[Object.assign(newTeam(0), {name})], active:0, joined:true};
+    state = {teams:[Object.assign(newTeam(0), {name, avatar:joinAv})], active:0, joined:true};
     $("join").hidden = true;
-    report({team:name, event:"Кезең", task:"Ойынға қосылды", answer:"", result:"", points:"00:00", total:"1-кезең 0/5"});
+    report({team:name, event:"Кезең", task:"Ойынға қосылды", answer:joinAv, result:"", points:"00:00", total:"1-кезең 0/5"});
     render(); pollRemote();
   };
 }
@@ -1040,6 +1107,8 @@ function start(){
     const saved = loadState();
     if(saved) state = saved; else showJoin();
   }
+  $("team-av").onclick = openAvatarPicker;
+  $("av-pick-close").onclick = ()=>{ $("av-pick").hidden = true; };
   $("team-minus").onclick = ()=>setTeams(state.teams.length-1);
   $("team-plus").onclick = ()=>setTeams(state.teams.length+1);
   $("btn-reset").onclick = ()=>{

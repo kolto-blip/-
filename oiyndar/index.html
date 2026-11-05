@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Пәнаралық ойындар</title>
+<style>
+:root{--bg:#f3f5f9;--card:#fff;--fg:#1b2240;--muted:#5d6788;--ink:#1d3a8f;--line:#d5dcec}
+@media (prefers-color-scheme: dark){:root{--bg:#121725;--card:#1b2234;--fg:#e7ebf7;--muted:#9aa4c4;--ink:#9db8ff;--line:#2c3652;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"PT Sans","Segoe UI",Arial,sans-serif;line-height:1.5}
+main{max-width:720px;margin:0 auto;padding:40px 16px;display:flex;flex-direction:column;gap:16px}
+h1{margin:0;color:var(--ink);font-size:32px}
+a.card{display:block;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:18px;color:inherit;text-decoration:none}
+a.card:hover{border-color:var(--ink)}
+a.card b{font-size:20px;color:var(--ink)}
+p{margin:4px 0 0;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Пәнаралық ойындар</h1>
+  <a class="card" id="l1" href="bilim-kartasy/"><b>Білім картасы</b><p>Топтық викторина: 5 пән жұбы, 20 сұрақ, таймер және ұпай.</p></a>
+  <a class="card" id="l2" href="kupiya-seif/"><b>Құпия сейф</b><p>Квест: 5 станциядағы тапсырманы шешіп, сейф кодын жинаңыз.</p></a>
+</main>
+<script>
+// ?r= параметрін ойын сілтемелеріне жалғастырады
+document.querySelectorAll("a.card").forEach(a => { a.href += location.search; });
+</script>
+</body>
+</html>

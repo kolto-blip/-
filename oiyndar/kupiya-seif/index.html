@@ -19,6 +19,8 @@
   --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
 body{background:radial-gradient(1200px 600px at 20% -10%,var(--steel-3),transparent 60%),var(--steel);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.5;min-height:100vh}
 .page{max-width:1200px;margin:0 auto;padding-block:28px 56px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
@@ -31,6 +33,11 @@ header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:fle
 .eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass)}
 h1{font-family:var(--f-display);font-weight:700;font-size:clamp(38px,7vw,64px);line-height:1;margin:6px 0 8px;letter-spacing:.02em;text-transform:uppercase;text-wrap:balance}
 .lede{margin:0;color:var(--muted);max-width:60ch}
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.cls{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.cls input{width:70px;background:#0b1417;border:1.5px solid var(--rivet);border-radius:8px;padding:6px 8px;font-weight:600}
+.sync{font-family:var(--f-mono);font-size:12px;color:var(--ok)}
+.sync.wait{color:var(--no)}
 .clock{font-family:var(--f-mono);font-weight:800;font-size:clamp(28px,5vw,40px);color:var(--brass);font-variant-numeric:tabular-nums;background:#0b1417;border:1.5px solid var(--rivet);border-radius:10px;padding:6px 16px;text-align:right}
 .clock small{display:block;font-size:11px;font-weight:500;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 
@@ -120,7 +127,11 @@ tr.lead td:first-child{color:var(--brass);font-weight:600}
       <h1>Құпия сейф</h1>
       <p class="lede">Әр станцияда екі пән біріктірілген тапсырма бар. Дұрыс жауап сейф кодының бір цифрын ашады. Бес цифрды жинап, сейфті бірінші ашқан топ жеңеді. Қате жауап +30 с, кеңес +60 с айып қосады.</p>
     </div>
-    <div class="clock" aria-live="off"><small id="clock-label">Уақыт</small><span id="clock">00:00</span></div>
+    <div class="hdr-right">
+      <label class="cls" for="cls-input">Сынып <input id="cls-input" maxlength="12" placeholder="7А"></label>
+      <div class="clock" aria-live="off"><small id="clock-label">Уақыт</small><span id="clock">00:00</span></div>
+      <div class="sync" id="sync" hidden></div>
+    </div>
   </header>
 
   <nav class="teambar" aria-label="Топтар">
@@ -180,6 +191,45 @@ const STATIONS = [
 ];
 const WRONG_PEN = 30, HINT_PEN = 60;
 const $ = id => document.getElementById(id);
+const GAME_NAME = "Құпия сейф";
+
+/* ---- Нәтижелерді мұғалімге жіберу ----
+   RESULTS_URL ішіне Google Apps Script веб-қосымшасының сілтемесін қойыңыз
+   (немесе ойынды ?r=СІЛТЕМЕ параметрімен ашыңыз). Бос болса, ештеңе жіберілмейді. */
+const RESULTS_URL = "";
+const LS = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+             set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+const RESULTS = (()=>{ let u = null; try{ u = new URLSearchParams(location.search).get("r"); }catch(e){}
+  if(u) LS.set("results-url", u); return u || LS.get("results-url") || RESULTS_URL; })();
+const QUEUE = (()=>{ try{ return JSON.parse(LS.get("results-queue") || "[]"); }catch(e){ return []; } })();
+let flushing = false;
+function clsName(){ return (document.getElementById("cls-input")?.value || "").trim(); }
+function report(ev){
+  if(!RESULTS) return;
+  QUEUE.push(Object.assign({game: GAME_NAME, cls: clsName()}, ev));
+  LS.set("results-queue", JSON.stringify(QUEUE));
+  flush();
+}
+async function flush(){
+  if(!RESULTS || flushing) { syncStatus(); return; }
+  flushing = true;
+  while(QUEUE.length){
+    try{
+      await fetch(RESULTS, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(QUEUE[0])});
+      QUEUE.shift(); LS.set("results-queue", JSON.stringify(QUEUE));
+    }catch(e){ break; }
+  }
+  flushing = false; syncStatus();
+}
+function syncStatus(){
+  const el = document.getElementById("sync"); if(!el) return;
+  if(!RESULTS){ el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = QUEUE.length ? "Жіберілмеген нәтиже: " + QUEUE.length + ". Интернетті тексеріңіз." : "● Нәтижелер мұғалімге жіберіледі";
+  el.classList.toggle("wait", QUEUE.length > 0);
+}
+setInterval(flush, 20000);
+window.addEventListener("online", flush);
 let state, tick = null;
 
 const norm = s => s.toLowerCase().trim().replace(/\s+/g,"")
@@ -228,8 +278,8 @@ function renderSafe(){
     if(all){
       const inp = $("lock-input");
       const tryOpen = ()=>{
-        if(inp.value.replace(/\D/g,"") === t.code.join("")){ t.opened = true; t.end = Date.now(); t.lockMsg=""; render(); }
-        else { t.wrong++; t.lockMsg = "Қате код. +30 с айып. Цифрларды станция ретімен оқыңыз."; renderSafe(); renderTabs(); renderLedger(); $("lock-input").focus(); }
+        if(inp.value.replace(/\D/g,"") === t.code.join("")){ t.opened = true; t.end = Date.now(); t.lockMsg=""; report({team:t.name, event:"Сейф", task:"Код", answer:inp.value, result:"ашылды", points:fmt(elapsed(t)), total:"5/5"}); render(); }
+        else { t.wrong++; report({team:t.name, event:"Сейф", task:"Код", answer:inp.value, result:"қате код", points:fmt(elapsed(t)), total:"5/5"}); t.lockMsg = "Қате код. +30 с айып. Цифрларды станция ретімен оқыңыз."; renderSafe(); renderTabs(); renderLedger(); $("lock-input").focus(); }
       };
       $("lock-btn").onclick = tryOpen;
       inp.onkeydown = e=>{ if(e.key==="Enter") tryOpen(); };
@@ -262,12 +312,13 @@ function renderStations(){
         touch(t);
         if(s.ans.some(a=>norm(a)===norm(inp.value))){ t.solved[i]=true; t.msgs[i]=""; }
         else { t.wrong++; t.msgs[i] = "Қате. +30 с айып. Тағы ойланып көріңіз."; }
+        report({team:t.name, event:"Жауап", task:(i+1)+"-станция · "+s.subj, answer:inp.value.trim(), result:t.solved[i]?"дұрыс":"қате", points:fmt(elapsed(t)), total:t.solved.filter(Boolean).length+"/5"});
         render();
         if(!t.solved[i]) $("ans-"+i)?.focus();
       };
       el.querySelector('[data-act="check"]').onclick = check;
       inp.onkeydown = e=>{ if(e.key==="Enter") check(); };
-      el.querySelector('[data-act="hint"]').onclick = ()=>{ touch(t); t.hints[i]=true; render(); };
+      el.querySelector('[data-act="hint"]').onclick = ()=>{ touch(t); t.hints[i]=true; report({team:t.name, event:"Кеңес", task:(i+1)+"-станция · "+s.subj, answer:"", result:"+60 с", points:fmt(elapsed(t)), total:t.solved.filter(Boolean).length+"/5"}); render(); };
     }
     box.appendChild(el);
   });
@@ -305,6 +356,8 @@ function setTeams(n){
 let armed = false;
 function start(data){
   state = (data && data.state) || fresh(4);
+  const ci = $("cls-input"); ci.value = LS.get("cls") || ""; ci.oninput = ()=>LS.set("cls", ci.value);
+  flush();
   $("team-minus").onclick = ()=>setTeams(state.teams.length-1);
   $("team-plus").onclick = ()=>setTeams(state.teams.length+1);
   $("btn-reset").onclick = ()=>{ if(armed){ state = fresh(state.teams.length); armed=false; $("btn-reset").textContent="Жаңа ойын"; render(); } else { armed=true; $("btn-reset").textContent="Растау: бәрін өшіру"; setTimeout(()=>{armed=false;$("btn-reset").textContent="Жаңа ойын";},3000); } };

@@ -27,6 +27,8 @@
   --good:#4cc488; --bad:#ff7380; --fg:#e7ebf7; --muted:#9aa4c4; --used:#161c2c; color-scheme:dark}
 
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
 body{
   background-color:var(--paper);
   background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
@@ -50,7 +52,11 @@ header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-be
 .eyebrow{font-family:var(--f-mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--margin)}
 h1{font-family:var(--f-display);font-weight:800;font-size:clamp(32px,6vw,54px);line-height:1.05;margin:4px 0 6px;color:var(--ink);text-wrap:balance}
 .lede{margin:0;color:var(--muted);max-width:62ch}
-.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cls{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.cls input{width:70px;border:1.5px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:7px 8px;font:700 15px var(--f-body)}
+.sync{font-family:var(--f-mono);font-size:12px;color:var(--good);margin-top:6px}
+.sync.wait{color:var(--margin)}
 .btn{border:1.5px solid var(--ink);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font-weight:700}
 .btn:hover{background:var(--ink);color:var(--paper)}
 .btn.primary{background:var(--ink);color:var(--paper)}
@@ -136,8 +142,10 @@ h1{font-family:var(--f-display);font-weight:800;font-size:clamp(32px,6vw,54px);l
       <p class="lede">Әр бағанада екі пән біріктірілген. Топтар кезекпен ұпайы бар ұяшықты таңдап, сұраққа 30 секунд ішінде жауап береді. Бір ұяшықта жасырын ×2 бонус бар.</p>
     </div>
     <div class="tools">
+      <label class="cls" for="cls-input">Сынып <input id="cls-input" maxlength="12" placeholder="7А"></label>
       <button class="btn" id="btn-reset" type="button">Жаңа ойын</button>
       <button class="btn primary" id="btn-finish" type="button">Қорытынды</button>
+      <div class="sync" id="sync" hidden></div>
     </div>
   </header>
 
@@ -222,12 +230,51 @@ const CATS = [
 const LETTERS = ["А","Ә","Б","В"];
 const TIME = 30;
 const $ = id => document.getElementById(id);
+const GAME_NAME = "Білім картасы";
+
+/* ---- Нәтижелерді мұғалімге жіберу ----
+   RESULTS_URL ішіне Google Apps Script веб-қосымшасының сілтемесін қойыңыз
+   (немесе ойынды ?r=СІЛТЕМЕ параметрімен ашыңыз). Бос болса, ештеңе жіберілмейді. */
+const RESULTS_URL = "";
+const LS = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+             set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+const RESULTS = (()=>{ let u = null; try{ u = new URLSearchParams(location.search).get("r"); }catch(e){}
+  if(u) LS.set("results-url", u); return u || LS.get("results-url") || RESULTS_URL; })();
+const QUEUE = (()=>{ try{ return JSON.parse(LS.get("results-queue") || "[]"); }catch(e){ return []; } })();
+let flushing = false;
+function clsName(){ return (document.getElementById("cls-input")?.value || "").trim(); }
+function report(ev){
+  if(!RESULTS) return;
+  QUEUE.push(Object.assign({game: GAME_NAME, cls: clsName()}, ev));
+  LS.set("results-queue", JSON.stringify(QUEUE));
+  flush();
+}
+async function flush(){
+  if(!RESULTS || flushing) { syncStatus(); return; }
+  flushing = true;
+  while(QUEUE.length){
+    try{
+      await fetch(RESULTS, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify(QUEUE[0])});
+      QUEUE.shift(); LS.set("results-queue", JSON.stringify(QUEUE));
+    }catch(e){ break; }
+  }
+  flushing = false; syncStatus();
+}
+function syncStatus(){
+  const el = document.getElementById("sync"); if(!el) return;
+  if(!RESULTS){ el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = QUEUE.length ? "Жіберілмеген нәтиже: " + QUEUE.length + ". Интернетті тексеріңіз." : "● Нәтижелер мұғалімге жіберіледі";
+  el.classList.toggle("wait", QUEUE.length > 0);
+}
+setInterval(flush, 20000);
+window.addEventListener("online", flush);
 
 let state, timerId = null, current = null;
 
 function fresh(n){
   const teams = Array.from({length:n||4},(_,i)=>({name:(i+1)+"-топ",score:0}));
-  return {teams, turn:0, used:{}, bonus:Math.floor(Math.random()*20)};
+  return {teams, turn:0, used:{}, bonus:Math.floor(Math.random()*20), finalSent:false};
 }
 
 function renderTeams(){
@@ -242,7 +289,7 @@ function renderTeams(){
       <span class="adj"><button type="button" data-d="-100" aria-label="100 ұпай алу">−100</button><button type="button" data-d="100" aria-label="100 ұпай қосу">+100</button></span></div>`;
     const inp = el.querySelector("input"); inp.value = t.name;
     inp.addEventListener("input",()=>{ t.name = inp.value || (i+1)+"-топ"; });
-    el.querySelectorAll(".adj button").forEach(b=>b.addEventListener("click",()=>{ t.score += +b.dataset.d; renderTeams(); }));
+    el.querySelectorAll(".adj button").forEach(b=>b.addEventListener("click",()=>{ t.score += +b.dataset.d; renderTeams(); report({team:t.name, event:"Түзету", task:"Мұғалім", answer:"", result:"", points:+b.dataset.d, total:t.score}); }));
     box.appendChild(el);
   });
 }
@@ -309,6 +356,7 @@ function answer(i){
   btns.forEach((b,k)=>{ b.disabled = true; if(k===q.a) b.classList.add("right"); else if(k===i) b.classList.add("wrong"); });
   const ok = i===q.a, v = $("q-verdict");
   if(ok) team.score += pts;
+  report({team:team.name, event:"Жауап", task:c.name+" · "+q.p+(current.bonus?" (×2)":""), answer: i<0 ? "уақыт бітті" : q.o[i], result: ok?"дұрыс":"қате", points: ok?pts:0, total: team.score});
   v.className = "verdict " + (ok?"ok":"no");
   v.innerHTML = `<b>${ok ? "Дұрыс! +"+pts+" ұпай" : (i<0 ? "Уақыт бітті" : "Қате жауап")}</b><span></span>`;
   v.lastChild.textContent = (ok?"":"Дұрыс жауабы: "+q.o[q.a]+". ") + q.n;
@@ -333,6 +381,7 @@ function showFinal(){
   $("f-title").textContent = top.length>1 ? "Тең нәтиже: "+top.map(t=>t.name).join(", ") : "Жеңімпаз: "+top[0].name;
   $("f-rank").innerHTML = "";
   sorted.forEach(t=>{ const li=document.createElement("li"); li.innerHTML=`<span></span><span class="pts">${t.score}</span>`; li.firstChild.textContent=t.name; $("f-rank").appendChild(li); });
+  if(!state.finalSent){ state.finalSent = true; sorted.forEach((t,k)=>report({team:t.name, event:"Қорытынды", task:"", answer:"", result:(k+1)+"-орын", points:"", total:t.score})); }
   $("f-overlay").hidden = false; $("f-close").focus();
 }
 
@@ -346,6 +395,8 @@ function setTeams(n){
 
 function start(data){
   state = (data && data.state) || fresh(4);
+  const ci = $("cls-input"); ci.value = LS.get("cls") || ""; ci.oninput = ()=>LS.set("cls", ci.value);
+  flush();
   $("team-minus").onclick = ()=>setTeams(state.teams.length-1);
   $("team-plus").onclick = ()=>setTeams(state.teams.length+1);
   $("btn-reset").onclick = ()=>{ state = fresh(state.teams.length); render(); };

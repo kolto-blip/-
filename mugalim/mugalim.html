@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мұғалім панелі</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&family=PT+Mono&display=swap">
+<style>
+/* Layout: one working column with three views (results, answer key, setup) behind a tab bar */
+:root{
+  --bg:#f3f5f9; --card:#ffffff; --fg:#1b2240; --muted:#5d6788; --line:#d5dcec;
+  --ink:#1d3a8f; --accent:#d23a4c; --ok:#1f8a52; --no:#c2333f; --soft:#e9eef9;
+  --f-body:"PT Sans","Segoe UI",Arial,sans-serif; --f-mono:"PT Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#121725; --card:#1b2234; --fg:#e7ebf7; --muted:#9aa4c4; --line:#2c3652;
+  --ink:#9db8ff; --accent:#ff6b7b; --ok:#4cc488; --no:#ff7380; --soft:#222b42; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.5}
+.page{max-width:1100px;margin:0 auto;padding:24px 16px 56px;display:flex;flex-direction:column;gap:20px}
+h1{margin:0;font-size:30px;color:var(--ink)}
+.sub{margin:4px 0 0;color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1.5px solid var(--line)}
+.tabs button{border:0;background:none;padding:10px 14px;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1.5px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card h2{margin:0;font-size:20px;color:var(--ink)}
+.card h3{margin:0;font-size:17px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row input[type=text],.row input[type=url]{flex:1 1 280px;min-width:0}
+input[type=text],input[type=url],select{border:1.5px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px}
+.btn{border:1.5px solid var(--ink);background:var(--ink);color:var(--card);border-radius:8px;padding:9px 14px;font-weight:700}
+.btn.alt{background:transparent;color:var(--ink)}
+.muted{color:var(--muted);font-size:14px}
+.msg{font-size:14px}
+.msg.no{color:var(--no)} .msg.ok{color:var(--ok)}
+.summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.team{border:1.5px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:4px;background:var(--bg)}
+.team .g{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.team b{font-size:17px}
+.team .big{font-size:26px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:760px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-weight:400;text-transform:uppercase;letter-spacing:.05em;position:sticky;top:0;background:var(--card)}
+td.ok{color:var(--ok);font-weight:700} td.no{color:var(--no);font-weight:700}
+.key{display:grid;gap:10px}
+.q{border-left:3px solid var(--ink);padding:4px 0 4px 12px}
+.q .t{font-weight:700}
+.q .a{color:var(--ok);font-weight:700}
+.q .n{color:var(--muted);font-size:14px}
+ol.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px}
+pre{margin:0;background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:12px;overflow:auto;font-family:var(--f-mono);font-size:13px;max-height:360px}
+code{font-family:var(--f-mono);background:var(--soft);padding:1px 5px;border-radius:4px;font-size:.92em}
+.links{display:flex;flex-direction:column;gap:8px}
+.links input{width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Мұғалім панелі</h1>
+    <p class="sub">«Білім картасы» және «Құпия сейф» ойындарының нәтижелері, жауап кілті және баптау. Бұл файлды оқушыларға бермеңіз.</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" data-view="results" aria-selected="true">Нәтижелер</button>
+    <button type="button" role="tab" data-view="key" aria-selected="false">Жауап кілті</button>
+    <button type="button" role="tab" data-view="setup" aria-selected="false">Баптау</button>
+  </nav>
+
+  <!-- RESULTS -->
+  <section data-panel="results" class="card">
+    <h2>Нәтижелер</h2>
+    <div class="row">
+      <input type="url" id="url" placeholder="https://script.google.com/macros/s/…/exec" aria-label="Google Apps Script сілтемесі">
+      <button class="btn" id="load" type="button">Жүктеу</button>
+      <label class="muted"><input type="checkbox" id="auto" checked> әр 15 секунд сайын жаңарту</label>
+    </div>
+    <div class="msg" id="msg">Сілтеме әлі енгізілмеген. «Баптау» бөліміндегі нұсқаулықты орындаңыз.</div>
+    <div class="row">
+      <select id="f-game" aria-label="Ойын"><option value="">Барлық ойын</option></select>
+      <select id="f-cls" aria-label="Сынып"><option value="">Барлық сынып</option></select>
+    </div>
+    <h3>Топтардың қорытындысы</h3>
+    <div class="summary" id="summary"><p class="muted">Нәтиже келгенде осында әр топтың ұпайы мен уақыты шығады.</p></div>
+    <h3>Барлық жауаптар (соңғысы жоғарыда)</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Уақыты</th><th>Ойын</th><th>Сынып</th><th>Топ</th><th>Оқиға</th><th>Тапсырма</th><th>Жауап</th><th>Нәтиже</th><th>Ұпай / уақыт</th><th>Жалпы</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </section>
+
+  <!-- KEY -->
+  <section data-panel="key" class="card" hidden>
+    <h2>Жауап кілті</h2>
+    <div id="key" class="key"></div>
+  </section>
+
+  <!-- SETUP -->
+  <section data-panel="setup" class="card" hidden>
+    <h2>1. Google Кестені қосу (бір рет, 5 минут)</h2>
+    <ol class="steps">
+      <li><a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> арқылы жаңа Google Кесте ашыңыз, атын қойыңыз (мысалы, «Ойын нәтижелері»).</li>
+      <li>Мәзірден <b>Кеңейтімдер → Apps Script</b> (Extensions → Apps Script) таңдаңыз.</li>
+      <li>Ашылған терезедегі барлық кодты өшіріп, төмендегі кодты қойыңыз. Сақтаңыз (💾).</li>
+      <li><b>Жариялау → Жаңа жариялау</b> (Deploy → New deployment). Түрі: <b>Веб-қосымша</b> (Web app).</li>
+      <li><b>Орындаушы:</b> Мен (Me). <b>Қол жеткізу:</b> Барлығы (Anyone). <b>Жариялау</b> батырмасын басыңыз да, Google рұқсат сұраса, рұқсат беріңіз.</li>
+      <li>Шыққан <code>…/exec</code> деп аяқталатын сілтемені көшіріп, «Нәтижелер» бөліміндегі өріске қойыңыз.</li>
+    </ol>
+    <div class="row"><button class="btn alt" id="copy-code" type="button">Кодты көшіру</button><span class="msg" id="copy-msg"></span></div>
+    <pre id="code">// Ойын нәтижелерін Google Кестеге жинау.
+// Кесте → Кеңейтімдер → Apps Script → осы кодты қойып, «Веб-қосымша» ретінде жариялаңыз.
+const SHEET_NAME = 'Нәтижелер';
+const HEAD = ['Уақыты', 'Ойын', 'Сынып', 'Топ', 'Оқиға', 'Тапсырма', 'Жауап', 'Нәтиже', 'Ұпай / уақыт', 'Жалпы'];
+
+function sheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAME);
+    sh.appendRow(HEAD);
+    sh.setFrozenRows(1);
+    sh.getRange(1, 1, 1, HEAD.length).setFontWeight('bold');
+  }
+  return sh;
+}
+
+// Ойыннан келген нәтижені жаңа жол етіп жазады
+function doPost(e) {
+  const d = JSON.parse(e.postData.contents);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    sheet_().appendRow([
+      new Date(), d.game || '', d.cls || '', d.team || '', d.event || '',
+      d.task || '', d.answer || '', d.result || '',
+      d.points === undefined ? '' : d.points, d.total === undefined ? '' : d.total
+    ]);
+  } finally {
+    lock.releaseLock();
+  }
+  return ContentService.createTextOutput('ok');
+}
+
+// Мұғалім панелі нәтижелерді осы арқылы оқиды
+function doGet() {
+  const rows = sheet_().getDataRange().getValues();
+  return ContentService.createTextOutput(JSON.stringify(rows))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+</pre>
+    <p class="muted">Нәтижелер кестенің «Нәтижелер» парағына түседі. Кестені тек сіз көресіз. Сілтеме арқылы жазбаларды оқуға болатындықтан, оны оқушылардан басқа адамдарға таратпаңыз.</p>
+
+    <h2>2. Оқушыларға ойын беру</h2>
+    <p><b>А жолы, сілтеме арқылы.</b> <code>oiyndar</code> папкасын <a href="https://app.netlify.com/drop" target="_blank" rel="noopener">app.netlify.com/drop</a> сайтына сүйреп апарыңыз. Сайт берген мекенжайды осында қойыңыз, сонда оқушыларға арналған дайын сілтемелер шығады:</p>
+    <div class="row"><input type="url" id="base" placeholder="https://mening-oiynym.netlify.app" aria-label="Сайт мекенжайы"></div>
+    <div class="links" id="links"><p class="muted">Алдымен 1-қадамдағы сілтемені және сайт мекенжайын енгізіңіз.</p></div>
+    <p><b>Ә жолы, файл арқылы (WhatsApp, Telegram).</b> Ойын файлын мәтіндік редактормен ашып, <code>const RESULTS_URL = "";</code> жолындағы тырнақшаның ішіне 1-қадамдағы сілтемені қойыңыз. Содан кейін файлды оқушыларға жіберіңіз.</p>
+    <p class="muted">Ойындағы «Сынып» өрісіне сыныпты (мысалы, 7А) жазғызыңыз, сонда нәтижелерді сынып бойынша сүзе аласыз. Интернет уақытша болмаса, нәтижелер құрылғыда сақталып, байланыс қалпына келгенде жіберіледі.</p>
+  </section>
+</div>
+
+<script>
+const KEY = [
+  {game:"Білім картасы", items:[
+    ["Математика + География",[
+      ["100","Масштаб 1 : 100 000, картадағы 3 см","3 км","1 см = 1 км"],
+      ["200","Астана–Алматы 1200 км, 80 км/сағ","15 сағат","1200 : 80"],
+      ["300","Етекте +24 °C, 3000 м биіктікте","+6 °C","3 · 6 = 18; 24 − 18"],
+      ["400","Хан Тәңірі 7010 м мен Каспий −28 м айырмасы","7038 м","7010 + 28"]]],
+    ["Биология + Химия",[
+      ["100","Фотосинтезде бөлінетін газ","O₂ (оттегі)",""],
+      ["200","Асқазан сөліндегі қышқыл","Тұз қышқылы (HCl)",""],
+      ["300","Гемоглобиндегі оттегін тасымалдайтын элемент","Темір (Fe)",""],
+      ["400","Дене массасы бойынша ең көп элемент","Оттегі","~65%"]]],
+    ["Тарих + Қазақ әдебиеті",[
+      ["100","«Қара сөздердің» авторы","Абай Құнанбайұлы",""],
+      ["200","«Абай жолы» роман-эпопеясының авторы","Мұхтар Әуезов",""],
+      ["300","Шоқан жазып алған қырғыз эпосы","«Манас»","1856 ж."],
+      ["400","«Маса» жинағының авторы","Ахмет Байтұрсынұлы","1911 ж."]]],
+    ["Ағылшын тілі + Информатика",[
+      ["100","Keyboard","Пернетақта",""],
+      ["200","Device to put documents on paper","Printer",""],
+      ["300","1010₂ ондық жүйеде","10","8 + 2"],
+      ["400","CPU","Central Processing Unit",""]]],
+    ["Физика + Математика",[
+      ["100","2 сағатта 30 км, жылдамдық","15 км/сағ","v = S : t"],
+      ["200","5 кг дененің ауырлық күші (g = 10)","50 Н","F = mg"],
+      ["300","0,5 м³ судың массасы","500 кг","m = ρV"],
+      ["400","R = 4 Ом, I = 3 А, кернеу","12 В","U = IR"]]]
+  ]},
+  {game:"Құпия сейф", items:[
+    ["Станциялар",[
+      ["1","Қазақ тілі + Математика: «Бір жігітке ___ өнер аз» : 10","7","жетпіс = 70"],
+      ["2","Ағылшын тілі + География: Қазақстанмен шекаралас елдер","five (5)","Ресей, Қытай, Қырғызстан, Өзбекстан, Түрікменстан"],
+      ["3","Химия + Физика: қатты күйден сұйыққа өту","балқу",""],
+      ["4","Биология + Математика: жүрек соғуы сағатына","4200","70 · 60"],
+      ["5","Информатика + Тарих: 10110111001₂","1465","Қазақ хандығы"]]]
+  ]}
+];
+const $ = id => document.getElementById(id);
+const LS = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// tabs
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.querySelectorAll("[data-panel]").forEach(p => p.hidden = p.dataset.panel !== b.dataset.view);
+});
+
+// answer key
+$("key").innerHTML = KEY.map(g => `<h3>${esc(g.game)}</h3>` + g.items.map(([cat, qs]) =>
+  `<div><div class="muted" style="font-weight:700;margin:6px 0">${esc(cat)}</div>` +
+  qs.map(([p,t,a,n]) => `<div class="q"><div class="t">${esc(p)} · ${esc(t)}</div><div class="a">${esc(a)}</div>${n?`<div class="n">${esc(n)}</div>`:""}</div>`).join("") + `</div>`).join("")).join("");
+
+// copy code
+$("copy-code").onclick = () => {
+  const txt = $("code").textContent;
+  const done = ok => { $("copy-msg").textContent = ok ? "Көшірілді" : "Кодты белгілеп, Ctrl+C басыңыз"; $("copy-msg").className = "msg " + (ok ? "ok" : ""); };
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).then(() => done(true), () => { selectCode(); done(false); });
+  else { selectCode(); done(false); }
+};
+function selectCode(){ const r = document.createRange(); r.selectNodeContents($("code")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+// student links
+function renderLinks(){
+  const u = $("url").value.trim(), base = $("base").value.trim().replace(/\/+$/,"");
+  LS.set("base", base);
+  if(!u || !base){ $("links").innerHTML = '<p class="muted">Алдымен 1-қадамдағы сілтемені және сайт мекенжайын енгізіңіз.</p>'; return; }
+  const r = encodeURIComponent(u);
+  $("links").innerHTML = [["Білім картасы","bilim-kartasy"],["Құпия сейф","kupiya-seif"]].map(([n,p]) =>
+    `<label><b>${n}</b><input type="text" readonly value="${esc(base+"/"+p+"/?r="+r)}" onclick="this.select()"></label>`).join("");
+}
+$("base").value = LS.get("base") || "";
+$("base").oninput = renderLinks;
+
+// results
+let rows = [], timer = null;
+$("url").value = LS.get("results-url") || "";
+$("url").oninput = () => { LS.set("results-url", $("url").value.trim()); renderLinks(); };
+async function load(){
+  const u = $("url").value.trim();
+  if(!u){ setMsg("Сілтеме әлі енгізілмеген. «Баптау» бөліміндегі нұсқаулықты орындаңыз.",""); return; }
+  setMsg("Жүктелуде…","");
+  try{
+    const res = await fetch(u, {cache:"no-store"});
+    const data = await res.json();
+    rows = data.slice(1);
+    setMsg("Жаңартылды: " + new Date().toLocaleTimeString() + " · жазба саны: " + rows.length, "ok");
+    fillFilters(); render();
+  }catch(e){
+    setMsg("Нәтижелерді жүктеу мүмкін болмады. Сілтеменің …/exec деп аяқталғанын және жариялауда «Қол жеткізу: Барлығы» таңдалғанын тексеріңіз.", "no");
+  }
+}
+function setMsg(t, c){ $("msg").textContent = t; $("msg").className = "msg " + c; }
+function fillFilters(){
+  for(const [id, col] of [["f-game",1],["f-cls",2]]){
+    const sel = $(id), cur = sel.value, first = sel.options[0].outerHTML;
+    const vals = [...new Set(rows.map(r => String(r[col])).filter(Boolean))].sort();
+    sel.innerHTML = first + vals.map(v => `<option${v===cur?" selected":""}>${esc(v)}</option>`).join("");
+  }
+}
+function render(){
+  const g = $("f-game").value, c = $("f-cls").value;
+  const list = rows.filter(r => (!g || r[1] === g) && (!c || String(r[2]) === c));
+  const fmtT = v => { const d = new Date(v); return isNaN(d) ? esc(v) : d.toLocaleString(); };
+  $("rows").innerHTML = list.slice().reverse().map(r => `<tr>${r.map((v,i) => {
+    const cls = i===7 ? (/дұрыс|ашылды|1-орын/.test(v) ? "ok" : /қате/.test(v) ? "no" : "") : "";
+    return `<td class="${cls}">${i===0 ? fmtT(v) : esc(v)}</td>`; }).join("")}</tr>`).join("")
+    || '<tr><td colspan="10" class="muted">Әзірге жазба жоқ.</td></tr>';
+  // summary per game + class + team
+  const teams = new Map();
+  for(const r of list){
+    const k = r[1]+"|"+r[2]+"|"+r[3];
+    const t = teams.get(k) || {game:r[1], cls:r[2], team:r[3], total:"", right:0, wrong:0, opened:"", place:""};
+    if(r[4]==="Жауап"){ r[7]==="дұрыс" ? t.right++ : t.wrong++; }
+    if(r[9] !== "") t.total = r[9];
+    if(r[4]==="Сейф" && r[7]==="ашылды") t.opened = r[8];
+    if(r[4]==="Қорытынды") t.place = r[7];
+    teams.set(k, t);
+  }
+  $("summary").innerHTML = teams.size ? [...teams.values()].map(t => `<div class="team">
+      <span class="g">${esc(t.game)}${t.cls ? " · " + esc(t.cls) : ""}</span><b>${esc(t.team)}</b>
+      <span class="big">${t.game==="Құпия сейф" ? (t.opened ? "ашты · " + esc(t.opened) : esc(t.total || "0/5")) : esc(t.total || 0) + " ұпай"}</span>
+      <span class="muted">Дұрыс: ${t.right} · Қате: ${t.wrong}${t.place ? " · " + esc(t.place) : ""}</span></div>`).join("")
+    : '<p class="muted">Нәтиже келгенде осында әр топтың ұпайы мен уақыты шығады.</p>';
+}
+$("f-game").onchange = render; $("f-cls").onchange = render;
+$("load").onclick = load;
+function arm(){ clearInterval(timer); if($("auto").checked) timer = setInterval(load, 15000); }
+$("auto").onchange = arm;
+renderLinks(); arm(); if($("url").value) load();
+</script>
+</body>
+</html>

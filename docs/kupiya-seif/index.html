@@ -626,7 +626,8 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !$("vault").hid
 /* ---- аватарлар ---- */
 const AVATARS = [["🐆","Ілбіс"],["🦅","Бүркіт"],["🐺","Қасқыр"],["🐎","Тұлпар"],["🦁","Арыстан"],["🐫","Түйе"],
                  ["🦉","Үкі"],["🦊","Түлкі"],["🐻","Аю"],["🦌","Бұғы"],["🐢","Тасбақа"],["🐬","Дельфин"]];
-const isDragon = n => /драко?н|dragon/i.test(String(n || ""));          // «Дракондар» деген топтың басы — айдаһар
+const isDragon = n => /драко?н|dragon/i.test(String(n || ""));
+const isQaqan = n => /қаған|каған|каган|qaqan|qagan|khagan|kagan/i.test(String(n || ""));   // «Қаған» тобы — алтын тақ пен тәж          // «Дракондар» деген топтың басы — айдаһар
 const avOf = t => isDragon(t.name) ? "🐲" : (t.avatar || AVATARS[0][0]);
 const remAv = r => isDragon(r.name) ? "🐲" : (r.avatar || "");
 function avatarGrid(box, selected, onPick){
@@ -841,7 +842,7 @@ function drawHydra2D(ctx, t, L, face, fire){
 
 /* ---- 2D сахна (WebGL болмағанда) ---- */
 let pxRAF = null;
-function pixelScene(avatar, reward, place, teamColor, still, dragon){
+function pixelScene(avatar, reward, place, teamColor, still, dragon, qaqan){
   const body = dragon ? "🐉" : avatar, kind = MOVES[body] || "hop", face = emojiFacing(kind === "dragon" ? "🐲" : body);
   const cv = $("win-px"), ctx = cv.getContext("2d");
   const LW = 96, LH = 90, K = 4 * Math.min(2, window.devicePixelRatio || 1);
@@ -864,6 +865,13 @@ function pixelScene(avatar, reward, place, teamColor, still, dragon){
     ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(cx-10, ground+.8, 40, 1.8, 0, 0, 7); ctx.fill();
     ctx.fillStyle = lo;
     for(let s=1;s<=3;s++){ const sh = ph*s/3, x0 = X(-2.7 + (s-1)*1.55/3); ctx.fillRect(x0, ground - sh + dy, X(-1.15) - x0, sh); }
+    if(qaqan){ // тақтың арқалығы
+      const bw = X(1.15)-X(-1.15), bh = 30, bx = X(-1.15), by = podTop + dy - bh;
+      ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, [bw/2, bw/2, 0, 0]); ctx.fill();
+      ctx.strokeStyle = "#8a1c1c"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.roundRect(bx+3, by+3, bw-6, bh-3, [bw/2-3, bw/2-3, 0, 0]); ctx.stroke();
+      ctx.fillStyle = "#e0263a"; ctx.beginPath(); ctx.arc(X(0), by + 7, 2.2, 0, 7); ctx.fill();
+      ctx.fillStyle = "#b3202a"; ctx.fillRect(X(-1), podTop + dy - 1.5, X(1)-X(-1), 1.5);
+    }
     ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(X(-1.15), podTop + dy, X(1.15)-X(-1.15), ph, [3,3,1,1]); ctx.fill();
     ctx.fillStyle = "rgba(255,255,255,.45)"; ctx.fillRect(X(-1.15)+1.5, podTop+dy+1, X(1.15)-X(-1.15)-3, .9);
     ctx.fillStyle = "rgba(40,25,5,.85)"; ctx.font = `700 ${Math.round(ph*.72)}px ${display}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -895,7 +903,8 @@ function pixelScene(avatar, reward, place, teamColor, still, dragon){
       const liftStart = Math.max(2.3, T_IN + m.D + .1);
       if(t > liftStart){
         const le = easeBack(clamp01((t - liftStart)/.45));
-        const cy = lerp(ay, ay - (isHydra ? 28 : AS/2 + 9), le) + Math.sin(t*3)*1;
+        if(qaqan){ ctx.fillStyle = "#000"; ctx.font = `11px ${EMOJI_FONT}`; ctx.textAlign = "center"; ctx.fillText("👑", X(gx), ay - (isHydra ? 21 : AS/2 + 1)); }
+        const cy = lerp(ay, ay - (isHydra ? 28 : AS/2 + 9) - (qaqan ? 8 : 0), le) + Math.sin(t*3)*1;
         ctx.save(); ctx.shadowColor = hi; ctx.shadowBlur = 6 + Math.sin(t*4)*3;
         ctx.fillStyle = "#000"; ctx.font = `15px ${EMOJI_FONT}`; ctx.fillText(reward, X(gx), cy); ctx.restore();
         if(le > .8){ ctx.fillStyle = hi;
@@ -1156,12 +1165,72 @@ function animateRig(rig, m, t, landT){
 }
 
 // әр кейіпкер үшін бірдей «актер» интерфейсі
-function makeActor(body, kind, dragonTeam){
-  const rig = makeRig(ANIMALS[dragonTeam ? "🐉" : body] || ANIMALS["🐆"]);
-  return {root: rig.root, yaw: rig.yaw, head: rig.head, height: rig.height, necks: rig.necks, yawMove: Math.PI/2, yawRest: 0,
-          animate: (m, t)=>animateRig(rig, m, t)};
+
+/* ---- «Қаған» тобы: алтын тақ, қошқар мүйіз өрнегі, тәж ---- */
+function ornamentTexture(w, h, label){
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d");
+  const g = x.createLinearGradient(0,0,0,h); g.addColorStop(0,"#ffe58a"); g.addColorStop(.5,"#f0b53a"); g.addColorStop(1,"#a8701c");
+  x.fillStyle = g; x.fillRect(0,0,w,h);
+  x.strokeStyle = "#8a1c1c"; x.lineWidth = Math.max(4, w/60); x.lineCap = "round";
+  x.strokeRect(x.lineWidth*1.5, x.lineWidth*1.5, w - x.lineWidth*3, h - x.lineWidth*3);
+  // қошқар мүйіз: екі жаққа бұралған мүйіздер қатары
+  const horn = (cx, cy, r, dir)=>{ x.beginPath(); for(let a=0;a<Math.PI*2.2;a+=.12){ const rr = r*(1 - a/(Math.PI*2.6)); x.lineTo(cx + dir*Math.cos(a)*rr, cy - Math.sin(a)*rr); } x.stroke(); };
+  const n = Math.max(2, Math.round(w/(h*.9))), step = w/n, r = Math.min(step, h)*.2;
+  for(let i=0;i<n;i++){ const cx = step*(i+.5), cy = label ? h*.24 : h*.5;
+    x.beginPath(); x.moveTo(cx, cy + r*1.4); x.lineTo(cx, cy - r*.2); x.stroke();
+    horn(cx - r*.05, cy - r*.2, r, -1); horn(cx + r*.05, cy - r*.2, r, 1); }
+  if(label){ x.fillStyle = "rgba(90,20,20,.9)"; x.textAlign = "center"; x.textBaseline = "middle";
+    x.font = `700 ${Math.round(h*.5)}px ${cssVar(document.documentElement,"--f-display") || "sans-serif"}`; x.fillText(label, w/2, h*.66); }
+  return new THREE.CanvasTexture(c);
 }
-function scene3d(avatar, place, teamColor, still, dragon){
+function buildThrone(parent, ph, add, mat, place){
+  const goldM = mat("#f2c040", .7, .25, {emissive:new THREE.Color("#5a3c00"), emissiveIntensity:.5});
+  const seatFront = new THREE.MeshStandardMaterial({map:ornamentTexture(512, Math.round(512*ph/2.3), String(place)), metalness:.4, roughness:.35});
+  const backM = new THREE.MeshStandardMaterial({map:ornamentTexture(512, 480), metalness:.4, roughness:.35});
+  const redM = mat("#b3202a", .1, .5), gemR = mat("#e0263a", .3, .15, {emissive:new THREE.Color("#5a0010")}), gemB = mat("#2a6ee0", .3, .15, {emissive:new THREE.Color("#001a5a")});
+  add(parent, new THREE.BoxGeometry(2.3, ph, 1.5), [goldM,goldM,goldM,goldM,seatFront,goldM], 0, ph/2, 0);
+  add(parent, new THREE.BoxGeometry(2.0, .08, 1.3), redM, 0, ph + .04, .05);                 // қызыл көрпе
+  const backH = 2.2;
+  add(parent, new THREE.BoxGeometry(2.3, backH, .26), [goldM,goldM,goldM,goldM,backM,goldM], 0, ph + backH/2, -.62);
+  const arch = add(parent, new THREE.CylinderGeometry(1.15, 1.15, .26, 40, 1, false, 0, Math.PI), goldM, 0, ph + backH, -.62);
+  arch.rotation.set(Math.PI/2, Math.PI/2, 0);
+  [-1,1].forEach(sd=>{
+    add(parent, new THREE.BoxGeometry(.22, .5, 1.25), goldM, sd*1.06, ph + .25, .02);         // шынтақ қойғыш
+    add(parent, new THREE.SphereGeometry(.15, 20, 14), goldM, sd*1.06, ph + .55, .6);
+    add(parent, new THREE.SphereGeometry(.16, 20, 14), goldM, sd*1.15, ph + backH + .1, -.62); // бағана басы
+    add(parent, new THREE.SphereGeometry(.1, 16, 12), sd < 0 ? gemB : gemR, sd*.7, ph + backH*.78, -.47);
+  });
+  add(parent, new THREE.SphereGeometry(.17, 20, 14), gemR, 0, ph + backH + .55, -.5);         // жоғарғы асыл тас
+  add(parent, new THREE.ConeGeometry(.12, .4, 16), goldM, 0, ph + backH + 1.25, -.62);
+}
+function addCrown(rig){
+  const head = rig.necks ? rig.necks[2].head : rig.head; if(!head) return;
+  rig.root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(head), size = box.getSize(new THREE.Vector3());
+  const top = head.worldToLocal(new THREE.Vector3((box.min.x+box.max.x)/2, box.max.y, (box.min.z+box.max.z)/2));
+  const ws = new THREE.Vector3(); head.getWorldScale(ws);
+  const r = Math.max(.12, Math.min(size.x, size.z)*.32) / ws.x;
+  const crown = new THREE.Group(); crown.position.copy(top).add(new THREE.Vector3(0, -r*.15, 0)); head.add(crown);
+  const gm = new THREE.MeshStandardMaterial({color:new THREE.Color("#ffd24a"), metalness:.75, roughness:.2, emissive:new THREE.Color("#7a5400"), emissiveIntensity:.6});
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(r, r*1.05, r*.55, 28, 1, true), gm); band.material.side = THREE.DoubleSide; band.position.y = r*.27; crown.add(band);
+  for(let i=0;i<7;i++){ const a = i/7*Math.PI*2;
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(r*.22, r*.7, 10), gm); sp.position.set(Math.cos(a)*r*.95, r*.85, Math.sin(a)*r*.95); crown.add(sp);
+    const gem = new THREE.Mesh(new THREE.SphereGeometry(r*.12, 10, 8), new THREE.MeshStandardMaterial({color:new THREE.Color(i%2 ? "#e0263a" : "#2a6ee0"), metalness:.2, roughness:.1}));
+    gem.position.set(Math.cos(a)*r*1.02, r*.27, Math.sin(a)*r*1.02); crown.add(gem); }
+  crown.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
+  rig.crown = crown;
+}
+function makeActor(body, kind, dragonTeam, qaqan){
+  const spec = ANIMALS[dragonTeam ? "🐉" : body] || ANIMALS["🐆"];
+  const rig = makeRig(spec);
+  if(qaqan) addCrown(rig);
+  return {root: rig.root, yaw: rig.yaw, head: rig.head, height: rig.height + (qaqan ? .35 : 0), necks: rig.necks, yawMove: Math.PI/2, yawRest: 0,
+          animate: (m, t)=>animateRig(rig, m, t),
+          // тақта отыру: артқы аяқтарын бүгіп, денесін сәл шалқайтады
+          sit: k=>{ if(spec.type !== "quad") return; rig.yaw.rotation.x = -.3*k; if(rig.legs.length === 4){ rig.legs[2].rotation.x = -1.15*k; rig.legs[3].rotation.x = -1.15*k; } }};
+}
+function scene3d(avatar, place, teamColor, still, dragon, qaqan){
   if(!window.THREE) return false;
   const body = dragon ? "🐉" : avatar, kind = MOVES[body] || "hop", isHydra = kind === "dragon";
   const face = emojiFacing(isHydra ? "🐲" : body);
@@ -1196,13 +1265,14 @@ function scene3d(avatar, place, teamColor, still, dragon){
   const metal = mat(gold, .55, .32), stepM = mat(lo, .45, .4);
   const front = new THREE.MeshStandardMaterial({map:plateTexture(String(place), 440, Math.round(440*ph/2.2), hi, gold, lo), metalness:.35, roughness:.4});
   const podG = new THREE.Group(); scene.add(podG);
-  add(podG, new THREE.BoxGeometry(2.3, ph, 1.5), [metal,metal,metal,metal,front,metal], 0, ph/2, 0);
+  if(qaqan) buildThrone(podG, ph, add, mat, place);
+  else add(podG, new THREE.BoxGeometry(2.3, ph, 1.5), [metal,metal,metal,metal,front,metal], 0, ph/2, 0);
   for(let s=1;s<=3;s++){ const sh = ph*s/3, x0 = -2.7 + (s-1)*1.55/3, w = -1.15 - x0; add(podG, new THREE.BoxGeometry(w, sh, 1.3), stepM, x0 + w/2, sh/2, 0); }
   if(kind === "splash"){ const pool = new THREE.Mesh(new THREE.CircleGeometry(.75, 32), new THREE.MeshStandardMaterial({color:C("#3aa0ff"), transparent:true, opacity:.75, metalness:.2, roughness:.1}));
     pool.rotation.x = -Math.PI/2; pool.position.set(-3.2,.01,0); scene.add(pool); }
   // жануар — мультфильм стиліндегі 3D модель
   const AS = 2.2;
-  const rig = makeActor(body, kind, dragon);
+  const rig = makeActor(body, kind, dragon, qaqan);
   const mover = new THREE.Group(); mover.add(rig.root); scene.add(mover);
   const _v = new THREE.Vector3(), _d = new THREE.Vector3(), _q = new THREE.Quaternion();
   const blob = new THREE.Mesh(new THREE.CircleGeometry(.55, 32), new THREE.MeshBasicMaterial({color:0x000000, transparent:true, opacity:.3, depthWrite:false}));
@@ -1249,10 +1319,10 @@ function scene3d(avatar, place, teamColor, still, dragon){
     podG.position.y = -(1 - easeBack(clamp01(t/.55)))*(ph+.4);
     const m = choreo(kind, t);
     const gy = groundAt(m.x, ph, FLYERS[kind] && !m.landed ? 1 : 0);
-    const AX = m.x, AY = gy + m.y*1.1;
+    const seated = qaqan && m.landed, AX = m.x, AY = gy + (seated ? 0 : m.y*1.1);
     blob.visible = mover.visible = m.visible;
     mover.position.set(AX, AY, .1);
-    mover.rotation.z = -m.rot;
+    mover.rotation.z = seated ? 0 : -m.rot;
     // қонғанда «серіппедей» жаншылып, қайта созылады
     let sqx = kind === "drop" ? 1 : Math.abs(m.sx), sqy = m.sy;
     if(m.landed && m.c < .35){ const q = Math.sin(m.c/.35*Math.PI); sqy *= 1 - .22*q; sqx *= 1 + .14*q; }
@@ -1260,6 +1330,7 @@ function scene3d(avatar, place, teamColor, still, dragon){
     const wantYaw = (m.moving && kind !== "drop") ? rig.yawMove : rig.yawRest;
     rig.yaw.rotation.y += (wantYaw - rig.yaw.rotation.y) * (still ? 1 : .12);
     rig.animate(m, t);
+    if(seated) rig.sit(clamp01(m.c/.45));
     mover.updateMatrixWorld(true);
     const headPos = rig.head ? rig.head.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(AX, AY + rig.height*.8, .1);
     blob.position.set(AX, gy + .01, .1); blob.scale.setScalar(Math.max(.35, 1 - m.y*.35)); blob.material.opacity = Math.max(.08, .3 - m.y*.08);
@@ -1373,6 +1444,11 @@ async function showWin(t, fresh){
     2:"Керемет нәтиже! Жеңіске бір қадам ғана қалды.",
     3:"Жарайсыңдар! Жүлделі үштікке кірдіңіздер.",
     n:"Барлық сейфті аштыңыз! Бұл да үлкен жетістік."}[key];
+  if(isQaqan(t.name)){
+    $("win-text").textContent = "👑 Ұлы Қаған! Алтын тақ сіздікі. " + $("win-text").textContent;
+    $("win-team").firstChild.textContent = "👑" + avOf(t);
+    if(!matchMedia("(prefers-reduced-motion: reduce)").matches) setTimeout(()=>{ if(!w.hidden) [392,523,659,784,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f, i===6 ? .9 : .28, "sawtooth", .045), i*190)); }, (Math.max(2.3, T_IN + (MOVE_DUR[MOVES[isDragon(t.name) ? "🐉" : avOf(t)] || "hop"] || 1.4) + .1) + 1.4)*1000);
+  }
   $("win-stats").innerHTML = `<span>⏱ ${fmt(elapsed(t))}</span><span>✗ қате: ${t.wrong}</span><span>💡 кеңес: ${hintCount(t)}</span>`;
   const rank = $("win-rank"); rank.innerHTML = "";
   list.slice(0, 5).forEach((x,k)=>{ const li = document.createElement("li"); if(x.me) li.className = "me";
@@ -1387,9 +1463,9 @@ async function showWin(t, fresh){
   if(!still){ stepSounds(kindW); setTimeout(()=>{ if(!w.hidden) animalCall(kindW); }, (T_IN + (MOVE_DUR[kindW] || 1.4))*1000); }
   window.__winT1 = setTimeout(()=>{ if(!w.hidden && !still) confetti(place<=3 ? place : "n"); }, still ? 0 : liftAt*1000 + 50);
   const teamCol = TEAM_COLORS[(ti < 0 ? 0 : ti) % TEAM_COLORS.length];
-  if(!scene3d(avOf(t), place, teamCol, still, isDragon(t.name))){
+  if(!scene3d(avOf(t), place, teamCol, still, isDragon(t.name), isQaqan(t.name))){
     $("win-3d").hidden = true; $("win-px").hidden = false;
-    pixelScene(avOf(t), {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key], place, teamCol, still, isDragon(t.name));
+    pixelScene(avOf(t), {1:"🏆", 2:"🥈", 3:"🥉", n:"⭐"}[key], place, teamCol, still, isDragon(t.name), isQaqan(t.name));
   }
   window.__winT2 = setTimeout(()=>{ if(!w.hidden) winSound(key==="n" ? "n" : place); }, still ? 0 : liftAt*1000);
   if(fresh) report({team:t.name, event:"Қорытынды", task:"Барлық сейф", answer:"", result:place+"-орын", points:fmt(elapsed(t)), total:STAGES.length+"/"+STAGES.length+" сейф"});

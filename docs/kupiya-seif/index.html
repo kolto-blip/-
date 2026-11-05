@@ -117,6 +117,7 @@ tr.lead td:first-child{color:var(--brass);font-weight:600}
 .pill.open{border-color:var(--ok);color:var(--ok)}
 .note{color:var(--muted);font-size:14px;margin:10px 0 0}
 body[data-stage="2"]{--brass:#e58a5f;--brass-soft:#8f4c31}
+body[data-stage="3"]{--brass:#c4a0ff;--brass-soft:#6d4fa8}
 .stage-tag{align-self:center;font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--brass);color:var(--brass);border-radius:999px;padding:3px 12px}
 .opened .btn{margin-top:10px}
 /* ---- онлайн режим: басқа топтар ---- */
@@ -245,9 +246,9 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
 <div class="page">
   <header>
     <div>
-      <div class="eyebrow">Пәнаралық квест · 2 кезең · 10 станция</div>
+      <div class="eyebrow">Пәнаралық квест · 3 кезең · 15 станция</div>
       <h1>Құпия сейф</h1>
-      <p class="lede">Жол бойындағы әр станция бөлек ойын: жұбын табу, ретімен қою, топқа бөлу, «дұрыс па, қате ме?» және сөз құрау. Әр ойында екі пән біріктірілген. Станциялар ретімен ашылады, ал орындалған әр станция сейф кодының бір цифрын береді. Бес цифрды жинап, бірінші сейфті ашқан топ 2-кезеңге өтеді. Екі сейфті де ең аз уақытта ашқан топ жеңеді. Әр қате әрекетке +30 с, кеңеске +60 с айып қосылады.</p>
+      <p class="lede">Жол бойындағы әр станция бөлек ойын: жұбын табу, ретімен қою, топқа бөлу, «дұрыс па, қате ме?» және сөз құрау. Әр ойында екі пән біріктірілген. Станциялар ретімен ашылады, ал орындалған әр станция сейф кодының бір цифрын береді. Бес цифрды жинап, сейфті ашқан топ келесі кезеңге өтеді. Үш сейфті де ең аз уақытта ашқан топ жеңеді. Әр қате әрекетке +30 с, кеңеске +60 с айып қосылады.</p>
     </div>
     <div class="hdr-right">
       <div class="clock" aria-live="off"><small id="clock-label">Уақыт</small><span id="clock">00:00</span></div>
@@ -379,8 +380,37 @@ const STAGES = [
       hint:"Тегі «Бай» буынынан басталып, «-ұлы» жұрнағымен аяқталады.",
       note:"Ахмет БАЙТҰРСЫНҰЛЫ — ақын, ағартушы, қазақ әліпбиінің реформаторы.",
       word:"БАЙТҰРСЫНҰЛЫ" }
+  ],
+  [
+    { type:"match", subj:"Тарих + География",
+      title:"Қаланы оған қатысты тарихи деректермен жұптаңыз.",
+      hint:"Әл-Фараби Сырдария бойындағы ежелгі қалада туған. Қожа Ахмет Ясауи кесенесі — ЮНЕСКО мұрасы.",
+      note:"Түркістанда — Ясауи кесенесі, Отырар — әл-Фарабидің отаны, Тараз — 2000 жылдық қала, Астана — 1997 жылдан бері елорда.",
+      pairs:[["Түркістан","Қожа Ахмет Ясауи кесенесі"],["Отырар","Әл-Фарабидің туған жері"],["Тараз","2000 жылдан астам тарихы бар Ұлы Жібек жолындағы қала"],["Астана","1997 жылдан бері Қазақстанның елордасы"]] },
+    { type:"order", subj:"Физика + Математика",
+      title:"Жылдамдықтарды өсуі ретімен түртіңіз: ең баяуынан бастаңыз.",
+      hint:"Дыбыс ауада 340 м/с, яғни шамамен 1200 км/сағ жылдамдықпен тарайды. Жарық одан да әлдеқайда жылдам.",
+      note:"Жаяу адам ≈ 5 км/сағ < велосипедші ≈ 15 км/сағ < автомобиль ≈ 90 км/сағ < дыбыс ≈ 1200 км/сағ < жарық ≈ 300 000 км/с.",
+      items:["Жаяу адам","Велосипедші","Автомобиль","Ауадағы дыбыс","Жарық"] },
+    { type:"sort", subj:"Биология + География",
+      title:"Жануарларды мекендейтін ортасына қарай бөліңіз.",
+      hint:"Ілбіс, арқар және тауешкі биік жартасты жерлерде тіршілік етеді.",
+      note:"Шөл мен далада: қарақұйрық, құлан, ақбөкен. Тауда: ілбіс, арқар, тауешкі.",
+      bins:["Шөл мен дала","Тау"],
+      items:[["Қарақұйрық",0],["Ілбіс",1],["Құлан",0],["Арқар",1],["Ақбөкен",0],["Тауешкі",1]] },
+    { type:"tf", subj:"Информатика + Математика",
+      title:"Әр тұжырымның дұрыс не қате екенін анықтаңыз.",
+      hint:"8 = 2 · 2 · 2, сондықтан екілік жүйеде бір бірлік пен үш нөл болады.",
+      note:"1 байт = 8 бит, ал 8 саны екілік жүйеде 1000₂ болып жазылады.",
+      items:[["1 Кбайт = 1024 байт.",true],["Екілік жүйеде 2 саны 10₂ болып жазылады.",true],["1 байт = 10 бит.",false],["Екілік жүйеде тек 0 және 1 цифрлары қолданылады.",true],["Ондық жүйедегі 8 саны екілік жүйеде 111₂ болып жазылады.",false]] },
+    { type:"anagram", subj:"Қазақ тілі + Тарих",
+      title:"Әріптерден сөз құраңыз: 1991 жылы 16 желтоқсанда Қазақстан жариялаған ел мерекесі.",
+      hint:"Сөз «Т» әрпінен басталып, «-дік» жұрнағымен аяқталады.",
+      note:"ТӘУЕЛСІЗДІК — 1991 жылғы 16 желтоқсанда жарияланды.",
+      word:"ТӘУЕЛСІЗДІК" }
   ]
 ];
+
 const WRONG_PEN = 30, HINT_PEN = 60;
 const $ = id => document.getElementById(id);
 const GAME_NAME = "Құпия сейф";
@@ -466,15 +496,15 @@ const sndClunk= ()=>{ tone(140, .35, "sine", .25); tone(70, .45, "sine", .2); };
 const sndWin  = ()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.25,"triangle",.07), i*120));
 
 let vaultTimers = [];
-function playVault(code, final, timeText, onDone){
+function playVault(code, final, timeText, onDone, stageIdx){
   const v = $("vault"), digits = $("vault-digits"), status = $("vault-status");
   vaultTimers.forEach(clearTimeout); vaultTimers = [];
   const later = (ms, fn)=>vaultTimers.push(setTimeout(fn, ms));
   v.className = "vault"; v.hidden = false;
   $("vault-loot").textContent = final ? "🏆" : "✉️";
-  $("vault-title").textContent = final ? "Екі сейф те ашылды!" : "1-сейф ашылды!";
-  $("vault-text").textContent = final ? "Жалпы нәтиже: " + timeText : "Ішінде 2-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.";
-  $("vault-btn").textContent = final ? "Жабу" : "2-кезеңге өту";
+  $("vault-title").textContent = final ? "Барлық сейф ашылды!" : (stageIdx+1) + "-сейф ашылды!";
+  $("vault-text").textContent = final ? "Жалпы нәтиже: " + timeText : "Ішінде " + (stageIdx+2) + "-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.";
+  $("vault-btn").textContent = final ? "Жабу" : (stageIdx+2) + "-кезеңге өту";
   $("vault-btn").onclick = ()=>{ vaultTimers.forEach(clearTimeout); v.hidden = true; onDone && onDone(); };
   digits.innerHTML = code.map(()=>"<span>?</span>").join("");
   const spans = [...digits.children];
@@ -510,7 +540,7 @@ function renderTabs(){
     b.type="button"; b.className="tab"; b.setAttribute("role","tab");
     b.setAttribute("aria-selected", i===state.active);
     b.style.boxShadow = `inset 4px 0 0 ${TEAM_COLORS[i % TEAM_COLORS.length]}`;
-    b.innerHTML = `<span></span><span class="dots">${finished(t) ? "2/2 АШЫҚ" : (t.stage+1)+"К "+cur(t).solved.map(s=>s?"●":"○").join("")}</span>`;
+    b.innerHTML = `<span></span><span class="dots">${finished(t) ? STAGES.length+"/"+STAGES.length+" АШЫҚ" : (t.stage+1)+"К "+cur(t).solved.map(s=>s?"●":"○").join("")}</span>`;
     b.firstChild.textContent = t.name;
     b.onclick = ()=>{ state.active=i; render(); };
     tabs.appendChild(b);
@@ -526,10 +556,10 @@ function renderSafe(){
   justSolved = -1;
   const all = sg.solved.every(Boolean), la = $("lock-area");
   if(sg.opened && !last){
-    la.innerHTML = `<div class="opened"><b>1-сейф ашылды!</b>Ішінде 2-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.<br><button class="btn solid" id="next-stage" type="button">2-кезеңге өту</button></div>`;
-    $("next-stage").onclick = ()=>{ t.stage++; report({team:t.name, event:"Кезең", task:"2-кезең басталды", answer:"", result:"", points:fmt(elapsed(t)), total:"1/2 сейф"}); render(); };
+    la.innerHTML = `<div class="opened"><b>${t.stage+1}-сейф ашылды!</b>Ішінде ${t.stage+2}-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.<br><button class="btn solid" id="next-stage" type="button">${t.stage+2}-кезеңге өту</button></div>`;
+    $("next-stage").onclick = ()=>{ t.stage++; report({team:t.name, event:"Кезең", task:(t.stage+1)+"-кезең басталды", answer:"", result:"", points:fmt(elapsed(t)), total:openedCount(t)+"/"+STAGES.length+" сейф"}); render(); };
   } else if(sg.opened){
-    la.innerHTML = `<div class="opened"><b>Екі сейф те ашылды!</b>Жалпы нәтиже: ${fmt(elapsed(t))}</div>`;
+    la.innerHTML = `<div class="opened"><b>Барлық сейф ашылды!</b>Жалпы нәтиже: ${fmt(elapsed(t))}</div>`;
   } else {
     la.innerHTML = `<div class="lock"><input id="lock-input" inputmode="numeric" maxlength="5" placeholder="•••••" aria-label="Сейф коды" ${all?"":"disabled"}><button class="btn solid" id="lock-btn" type="button" ${all?"":"disabled"}>Ашу</button></div>
       <div class="lock-msg ${sg.lockMsg.startsWith("Қате")?"no":""}" id="lock-msg">${sg.lockMsg || (all ? "Барлық цифр жиналды. Кодты станция ретімен енгізіңіз." : "Сейфті ашу үшін осы кезеңнің 5 станциясын шешіңіз.")}</div>`;
@@ -539,12 +569,12 @@ function renderSafe(){
         if(inp.value.replace(/\D/g,"") === sg.code.join("")){
           sg.opened = true; sg.lockMsg = "";
           if(last) t.end = Date.now();
-          report({team:t.name, event:"Сейф", task:stageLabel(t)+" · Код", answer:inp.value, result:"ашылды", points:fmt(elapsed(t)), total:openedCount(t)+"/2 сейф"});
+          report({team:t.name, event:"Сейф", task:stageLabel(t)+" · Код", answer:inp.value, result:"ашылды", points:fmt(elapsed(t)), total:openedCount(t)+"/"+STAGES.length+" сейф"});
           render();
-          playVault(sg.code, last, fmt(elapsed(t)), last ? null : ()=>$("next-stage")?.click());
+          playVault(sg.code, last, fmt(elapsed(t)), last ? null : ()=>$("next-stage")?.click(), t.stage);
         } else {
           t.wrong++;
-          report({team:t.name, event:"Сейф", task:stageLabel(t)+" · Код", answer:inp.value, result:"қате код", points:fmt(elapsed(t)), total:openedCount(t)+"/2 сейф"});
+          report({team:t.name, event:"Сейф", task:stageLabel(t)+" · Код", answer:inp.value, result:"қате код", points:fmt(elapsed(t)), total:openedCount(t)+"/"+STAGES.length+" сейф"});
           sg.lockMsg = "Қате код. +30 с айып. Цифрларды станция ретімен оқыңыз.";
           renderSafe(); renderTabs(); renderLedger(); $("lock-input").focus();
         }
@@ -716,13 +746,13 @@ function renderStations(){
 
 function renderLedger(){
   const rows = state.teams.map(t=>({name:t.name, stage:t.stage+1, o:openedCount(t), n:solvedAll(t), s:elapsed(t), wrong:t.wrong, hints:hintCount(t), done:finished(t), remote:false}))
-    .concat(REMOTE.map(r=>({name:r.name, stage:r.stage, o:r.opened, n:Math.min(10,(r.stage-1)*5 + r.solved), s:r.el, wrong:r.wrong, hints:r.hints, done:r.opened>=2, remote:true})))
+    .concat(REMOTE.map(r=>({name:r.name, stage:r.stage, o:r.opened, n:Math.min(STAGES.length*5,(r.stage-1)*5 + r.solved), s:r.el, wrong:r.wrong, hints:r.hints, done:r.opened>=STAGES.length, remote:true})))
     .sort((a,b)=> (b.o-a.o) || (b.n-a.n) || (a.s-b.s));
   $("ledger").innerHTML = "";
   rows.forEach((r,k)=>{
     const tr = document.createElement("tr");
     tr.className = (k===0 && r.n>0 ? "lead " : "") + (r.remote ? "remote" : "");
-    tr.innerHTML = `<td></td><td class="num">${r.stage}</td><td class="num">${r.n}/10</td><td class="num">${r.wrong}</td><td class="num">${r.hints}</td><td class="num">${fmt(r.s)}</td><td><span class="pill ${r.done?"open":""}">${r.o}/2 ашық</span></td>`;
+    tr.innerHTML = `<td></td><td class="num">${r.stage}</td><td class="num">${r.n}/${STAGES.length*5}</td><td class="num">${r.wrong}</td><td class="num">${r.hints}</td><td class="num">${fmt(r.s)}</td><td><span class="pill ${r.done?"open":""}">${r.o}/${STAGES.length} ашық</span></td>`;
     tr.firstChild.textContent = r.name;
     $("ledger").appendChild(tr);
   });
@@ -828,8 +858,8 @@ function teamsFromRows(rows){
     const total = String(r[8]||"");
     let m;
     if((m = /^(\d)-кезең (\d)\/5$/.exec(total))){ o.stage = +m[1]; o.solved = +m[2]; }
-    if(r[3]==="Сейф" && r[6]==="ашылды" && (m = /^(\d)\/2 сейф$/.exec(total))) o.opened = +m[1];
-    if(r[3]==="Кезең" && r[4]==="2-кезең басталды"){ o.stage = 2; o.solved = 0; }
+    if(r[3]==="Сейф" && r[6]==="ашылды" && (m = /^(\d)\/\d сейф$/.exec(total))) o.opened = +m[1];
+    if(r[3]==="Кезең" && (m = /^(\d)-кезең басталды$/.exec(String(r[4]||"")))){ o.stage = +m[1]; o.solved = 0; }
     if(r[6]==="қате") o.wrong++;
     if(r[3]==="Кеңес") o.hints++;
     o.el = Math.max(o.el, parseT(r[7]));

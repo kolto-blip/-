@@ -180,6 +180,18 @@ body[data-stage="3"]{--brass:#c4a0ff;--brass-soft:#6d4fa8}
 .win[data-place="n"]{--medal:#7fb6ff;--medal-hi:#cfe4ff;--medal-lo:#3d5f9a}
 .win:not([data-place="1"]) .win-rays{display:none}
 @media (prefers-reduced-motion:reduce){.win *{animation:none!important}}
+/* ---- Ұлы Жібек жолы безендіруі ---- */
+body{background-image:radial-gradient(1200px 600px at 20% -10%,var(--steel-3),transparent 60%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23d9a441' stroke-width='2.2' stroke-linecap='round' opacity='.09'%3E%3Cpath d='M48 70V48M48 48c0-14-17-19-22-9-3 7 5 12 10 6M48 48c0-14 17-19 22-9 3 7-5 12-10 6'/%3E%3Cpath d='M0 0l6 6M96 0l-6 6M0 96l6-6M96 96l-6-6'/%3E%3C/g%3E%3C/svg%3E");background-repeat:no-repeat,repeat}
+header{position:relative}
+.hdr-steppe{position:absolute;right:0;top:-10px;width:min(420px,45%);height:150px;pointer-events:none;opacity:.9;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 150'%3E%3Cg opacity='.5'%3E%3Ccircle cx='330' cy='46' r='20' fill='%23f2c14e' opacity='.6'/%3E%3Cpolygon points='0,130 70,80 120,104 190,58 250,98 320,70 420,110 420,150 0,150' fill='%233a5d67'/%3E%3Cpath d='M0 140Q100 122 210 138T420 134V150H0Z' fill='%23c8a46a' opacity='.5'/%3E%3Cg transform='translate(80 142)'%3E%3Cpath d='M-20 0H20V-13Q0-32-20-13Z' fill='%23efe6d2'/%3E%3Crect x='-4' y='-9' width='8' height='9' fill='%238a1c1c'/%3E%3C/g%3E%3Cg transform='translate(126 145) scale(.7)'%3E%3Cpath d='M-20 0H20V-13Q0-32-20-13Z' fill='%23efe6d2'/%3E%3Crect x='-4' y='-9' width='8' height='9' fill='%238a1c1c'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") right bottom/contain no-repeat}
+header > div:not(.hdr-steppe){position:relative}
+@media (max-width:760px){.hdr-steppe{display:none}}
+.route .steppe{position:absolute;left:0;right:0;bottom:0;width:100%;height:100%;pointer-events:none}
+.route .caravan{position:absolute;bottom:6px;left:0;font-size:18px;opacity:.75;white-space:nowrap;pointer-events:none;animation:caravan 38s linear infinite;letter-spacing:2px}
+@keyframes caravan{from{transform:translateX(-120px)}to{transform:translateX(calc(100vw + 40px))}}
+.node-label .city{color:var(--fg);font-weight:600;font-size:12px}
+@media (prefers-reduced-motion:reduce){.route .caravan{animation:none;left:20%}}
 /* ---- марапаттау рәсімі ---- */
 .cer{position:fixed;inset:0;z-index:75;display:flex;align-items:center;justify-content:center;overflow:auto;
   background:radial-gradient(circle at 50% 35%,#4a3a12,#090d0f 72%);
@@ -279,7 +291,8 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
 .token.away{opacity:.35}
 .st.locked{background:#bdb4a0;box-shadow:none}
 .st.locked .lock-note{font-size:15px;color:#5a503c}
-@media (max-width:600px){.node-label.subj{display:none}.route{height:200px}.route-title{font-size:10px;top:8px}.node{width:36px;height:36px;font-size:14px}.node.safe{width:46px;height:46px;font-size:22px}}
+.node-label.vault-label{transform:none;text-align:right}
+@media (max-width:600px){.node-label .sj{display:none}.node-label .city{font-size:10px}.route{height:200px}.route-title{font-size:10px;top:8px}.node{width:36px;height:36px;font-size:14px}.node.safe{width:46px;height:46px;font-size:22px}}
 /* ---- сейф ашылу анимациясы ---- */
 .vault{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
   background:rgba(5,10,12,.82);backdrop-filter:blur(3px);
@@ -327,10 +340,11 @@ tr.remote td:first-child::after{content:" · басқа құрылғы";color:va
 
 <div class="page">
   <header>
+    <div class="hdr-steppe" aria-hidden="true"></div>
     <div>
-      <div class="eyebrow">Пәнаралық квест · 3 кезең · 15 станция</div>
+      <div class="eyebrow">Ұлы Жібек жолы · 3 кезең · 15 көне қала</div>
       <h1>Құпия сейф</h1>
-      <p class="lede">Жол бойындағы әр станция бөлек ойын: жұбын табу, ретімен қою, топқа бөлу, «дұрыс па, қате ме?» және сөз құрау. Әр ойында екі пән біріктірілген. Станциялар ретімен ашылады, ал орындалған әр станция сейф кодының бір цифрын береді. Бес цифрды жинап, сейфті ашқан топ келесі кезеңге өтеді. Үш сейфті де ең аз уақытта ашқан топ жеңеді. Әр қате әрекетке +30 с, кеңеске +60 с айып қосылады.</p>
+      <p class="lede">Керуен Ұлы Жібек жолымен Отырардан Ұлытауға дейін жүреді. Жолдағы әр қала — бөлек ойын: жұбын табу, ретімен қою, топқа бөлу, «дұрыс па, қате ме?» және сөз құрау. Әр ойында екі пән біріктірілген. Станциялар ретімен ашылады, ал орындалған әр станция сейф кодының бір цифрын береді. Бес цифрды жинап, сейфті ашқан топ келесі кезеңге өтеді. Үш сейфті де ең аз уақытта ашқан топ жеңеді. Әр қате әрекетке +30 с, кеңеске +60 с айып қосылады.</p>
     </div>
     <div class="hdr-right">
       <div class="clock" aria-live="off"><small id="clock-label">Уақыт</small><span id="clock">00:00</span></div>
@@ -532,6 +546,12 @@ const STAGES = [
 ];
 
 const WRONG_PEN = 30, HINT_PEN = 60;
+/* Ұлы Жібек жолы: әр кезең — бір өңір, әр станция — көне қала, сейф — қазына */
+const SILK = [
+  {region:"Сыр бойы", cities:["Отырар","Сауран","Түркістан","Сайрам","Тараз"], safe:"Керуен-сарай"},
+  {region:"Жетісу",   cities:["Ақыртас","Құлан","Мерке","Талғар","Қойлық"],   safe:"Хан ордасы"},
+  {region:"Ұлы дала", cities:["Сығанақ","Жент","Жанкент","Сарайшық","Ұлытау"], safe:"Ұлы қазына"}
+];
 const $ = id => document.getElementById(id);
 const GAME_NAME = "Құпия сейф";
 // мұғалімнің тест режимі (#demo): «Финалға өту» батырмасы бар, нәтижелер кестеге жіберілмейді
@@ -629,7 +649,7 @@ function playVault(code, final, timeText, onDone, stageIdx){
   const later = (ms, fn)=>vaultTimers.push(setTimeout(fn, ms));
   v.className = "vault"; v.hidden = false;
   $("vault-loot").textContent = final ? "🏆" : "✉️";
-  $("vault-title").textContent = final ? "Барлық сейф ашылды!" : (stageIdx+1) + "-сейф ашылды!";
+  $("vault-title").textContent = final ? "Барлық сейф ашылды!" : SILK[stageIdx].safe + " ашылды!";
   $("vault-text").textContent = final ? "Жалпы нәтиже: " + timeText : "Ішінде " + (stageIdx+2) + "-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.";
   $("vault-btn").textContent = final ? "Нәтижені көру" : (stageIdx+2) + "-кезеңге өту";
   $("vault-btn").onclick = ()=>{ vaultTimers.forEach(clearTimeout); v.hidden = true; onDone && onDone(); };
@@ -1708,14 +1728,14 @@ function renderTabs(){
 function renderSafe(){
   const t = state.teams[state.active], sg = cur(t), last = t.stage === STAGES.length-1;
   document.body.dataset.stage = t.stage+1;
-  $("stage-tag").textContent = stageLabel(t) + " · " + (t.stage+1) + "-сейф";
+  $("stage-tag").textContent = stageLabel(t) + " · " + SILK[t.stage].region;
   $("team-name").value = t.name;
   $("team-av").textContent = avOf(t);
   $("wheels").innerHTML = sg.code.map((d,i)=>`<div class="wheel ${sg.solved[i]?"got":""} ${i===justSolved?"pop":""}"><b>${sg.solved[i]?d:"?"}</b><span>${i+1}-СТ</span></div>`).join("");
   justSolved = -1;
   const all = sg.solved.every(Boolean), la = $("lock-area");
   if(sg.opened && !last){
-    la.innerHTML = `<div class="opened"><b>${t.stage+1}-сейф ашылды!</b>Ішінде ${t.stage+2}-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.<br><button class="btn solid" id="next-stage" type="button">${t.stage+2}-кезеңге өту</button></div>`;
+    la.innerHTML = `<div class="opened"><b>${SILK[t.stage].safe} ашылды!</b>Ішінде ${t.stage+2}-кезеңнің тапсырмалары жатыр. Уақыт әлі жүріп жатыр.<br><button class="btn solid" id="next-stage" type="button">${t.stage+2}-кезеңге өту</button></div>`;
     $("next-stage").onclick = ()=>{ t.stage++; report({team:t.name, event:"Кезең", task:(t.stage+1)+"-кезең басталды", answer:"", result:"", points:fmt(elapsed(t)), total:openedCount(t)+"/"+STAGES.length+" сейф"}); render(); };
   } else if(sg.opened){
     la.innerHTML = `<div class="opened"><b>Барлық сейф ашылды!</b>Жалпы нәтиже: ${fmt(elapsed(t))}<br><button class="btn solid" id="show-win" type="button">Орынды көру</button></div>`;
@@ -1874,7 +1894,7 @@ function renderStations(){
   box.innerHTML = "";
   list.forEach((s,i)=>{
     const el = document.createElement("article");
-    const head = `<div class="st-top"><span class="st-no">${t.stage+1}.${i+1} · ${TYPE_LABEL[s.type]}</span><span class="st-subj"></span></div>`;
+    const head = `<div class="st-top"><span class="st-no">${t.stage+1}.${i+1} ${SILK[t.stage].cities[i]} · ${TYPE_LABEL[s.type]}</span><span class="st-subj"></span></div>`;
     if(!sg.solved[i] && i > solvedIn(sg)){
       el.className = "st locked";
       el.innerHTML = head + `<p class="lock-note">🔒 Бұл станция алдыңғы станцияны шешкенде ашылады.</p>`;
@@ -1931,6 +1951,22 @@ function routePoints(n){
   return Array.from({length:n+1},(_,i)=>({x: 10 + i*(80/n), y: i%2 ? 42 : 66}));
 }
 const solvedIn = sg => { let k=0; while(k<sg.solved.length && sg.solved[k]) k++; return k; };
+// дала көрінісі: тау, құм төбелер, шаңырақ-күн, киіз үйлер
+function steppeSVG(){
+  const yurt = (x, y, k)=>`<g transform="translate(${x} ${y}) scale(${k})"><path d="M-20 0 H20 V-13 Q0 -32 -20 -13 Z" fill="#efe6d2" opacity=".55"/>
+    <path d="M-20 -13 Q0 -32 20 -13" fill="none" stroke="#8a1c1c" stroke-width="2" opacity=".55"/><path d="M-20 -7 H20" stroke="#8a1c1c" stroke-width="2" opacity=".45"/>
+    <rect x="-4" y="-9" width="8" height="9" fill="#8a1c1c" opacity=".55"/></g>`;
+  let rays = ""; for(let i=0;i<16;i++){ const a = i*Math.PI/8; rays += `<line x1="${880+Math.cos(a)*27}" y1="${46+Math.sin(a)*27}" x2="${880+Math.cos(a)*36}" y2="${46+Math.sin(a)*36}"/>`; }
+  return `<svg class="steppe" viewBox="0 0 1000 230" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <g stroke="#f2c14e" stroke-width="3" opacity=".35">${rays}</g>
+    <circle cx="880" cy="46" r="22" fill="#f2c14e" opacity=".35"/><circle cx="880" cy="46" r="11" fill="none" stroke="#132227" stroke-width="2" opacity=".5"/>
+    <polygon points="0,175 90,128 160,152 250,100 330,142 420,108 520,150 610,95 700,140 790,112 880,150 1000,122 1000,230 0,230" fill="#3a5d67" opacity=".35"/>
+    <polygon points="235,112 250,100 266,111" fill="#e4ecee" opacity=".25"/><polygon points="594,106 610,95 627,106" fill="#e4ecee" opacity=".25"/>
+    <path d="M0 196 Q120 172 240 193 T480 190 T720 195 T1000 188 V230 H0Z" fill="#c8a46a" opacity=".16"/>
+    <path d="M0 212 Q150 198 300 212 T600 210 T1000 208 V230 H0Z" fill="#c8a46a" opacity=".12"/>
+    ${yurt(22,206,.75)}${yurt(978,206,.75)}</svg>`;
+}
+
 function renderRoute(){
   const t = state.teams[state.active], st = t.stage, sg = cur(t), list = STAGES[st], n = list.length;
   const pts = routePoints(n), box = $("route");
@@ -1947,9 +1983,9 @@ function renderRoute(){
     pts.forEach((p,i)=>{
       const isSafe = i===n;
       nodes += `<button type="button" class="node ${isSafe?"safe":""}" data-node="${i}" style="left:${p.x}%;top:${p.y}%" aria-label="${isSafe?"Сейф":(i+1)+"-станция"}">${isSafe?"🔐":(st+1)+"."+(i+1)}</button>`;
-            nodes += `<div class="node-label ${isSafe?"":"subj"}" style="left:${p.x}%;top:calc(${p.y}% + 28px)">${isSafe?(st+1)+"-сейф":list[i].subj.replace(" + ","<br>+ ")}</div>`;
+            nodes += `<div class="node-label ${isSafe?"vault-label":"subj"}" style="${isSafe ? "right:6px" : `left:${p.x}%`};top:calc(${p.y}% + 28px)">${isSafe ? `<b class="city">${SILK[st].safe}</b>` : `<b class="city">${SILK[st].cities[i]}</b><span class="sj"><br>` + list[i].subj.replace(" + ","<br>+ ") + `</span>`}</div>`;
     });
-    box.innerHTML = `<div class="route-title">${st+1}-кезең · сейфке апаратын жол</div>` + svg + nodes + `<div id="tokens"></div>`;
+    box.innerHTML = steppeSVG() + `<div class="caravan" aria-hidden="true">🐫🐫🐫</div><div class="route-title">${st+1}-кезең · ${SILK[st].region} · Ұлы Жібек жолы</div>` + svg + nodes + `<div id="tokens"></div>`;
     box.querySelectorAll(".node").forEach(nd=>nd.onclick = ()=>{
       const i = +nd.dataset.node, el = document.querySelectorAll(".st")[i];
       (i===n ? $("lock-area") : el)?.scrollIntoView({behavior:"smooth", block:"center"});

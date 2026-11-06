@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Превью — Нұртілек</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111}
+.thumb{position:relative;width:1242px;height:692px;overflow:hidden;background:url(background.png) 0 0/1242px 692px}
+.glow{position:absolute;inset:0;background:radial-gradient(ellipse 420px 380px at 400px 330px,rgba(255,170,60,.55),transparent 70%)}
+.person{position:absolute;left:10px;top:-10px;width:800px;filter:drop-shadow(0 0 18px rgba(0,0,0,.55))}
+.shade{position:absolute;left:0;right:0;bottom:0;height:300px;background:linear-gradient(to top,rgba(5,10,20,.85),rgba(5,10,20,.55) 55%,transparent)}
+.corner{position:absolute;background:url(background.png) no-repeat}
+.title{position:absolute;left:26px;right:26px;bottom:44px;text-align:center;font-family:Oswald,sans-serif;font-weight:700;text-transform:uppercase;font-size:72px;white-space:nowrap;line-height:1.05;letter-spacing:.5px;-webkit-text-stroke:6px #000;paint-order:stroke fill;text-shadow:0 5px 0 #000,0 10px 24px rgba(0,0,0,.7)}
+.l1{color:#fff}.l2{color:#ffd21f}
+</style></head><body>
+<div class="thumb">
+  <div class="glow"></div>
+  <img class="person" src="person-nurtilek.png">
+  <div class="shade"></div>
+  <div class="corner" style="left:0;top:625px;width:135px;height:67px;background-position:0 -625px"></div>
+  <div class="corner" style="left:1100px;top:585px;width:142px;height:107px;background-position:-1100px -585px"></div>
+  <h1 class="title"><div class="l1">Сможет ли Нұртілек сохранить стипендию</div><div class="l2">или его завалят на калкулусе?</div></h1>
+</div>
+<script>document.querySelectorAll(".title div").forEach(d=>{const w=1190;if(d.scrollWidth>w)d.style.fontSize=(72*w/d.scrollWidth)+"px"})</script></body></html>

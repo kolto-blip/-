@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Шаблон превью — AITU</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Noto+Serif:ital@1&display=swap" rel="stylesheet">
+<style>
+  /*
+    Редактируемый шаблон превью 1242×692 (≈16:9).
+    Что менять:
+      --bg-image     — фото фона (здание и т.п.)
+      --person-image — фото героя (лучше PNG без фона)
+      .title .line1 / .line2 — текст заголовка
+  */
+  :root {
+    --bg-image: url("original.webp");
+    --person-image: none;
+    --accent: #ffd21f;
+    --text: #ffffff;
+    --logo-blue: #1f4fd8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; display: grid; place-items: center; min-height: 100vh; }
+
+  .thumb {
+    position: relative; width: 1242px; height: 692px; overflow: hidden;
+    background: #0b1a2e var(--bg-image) center / cover no-repeat;
+    font-family: "Oswald", "Arial Narrow", sans-serif;
+  }
+  /* затемнение + тёплая подсветка слева, как в оригинале */
+  .thumb::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 45% 55%, rgba(255,160,40,.35), transparent 55%),
+      linear-gradient(to top, rgba(0,0,0,.75) 0%, transparent 40%);
+  }
+
+  .formulas {
+    position: absolute; inset: 0; pointer-events: none;
+    font-family: "Noto Serif", serif; font-style: italic; color: rgba(255,255,255,.9);
+    text-shadow: 0 0 12px rgba(120,200,255,.9);
+  }
+  .formulas span { position: absolute; font-size: 34px; white-space: nowrap; }
+
+  .person {
+    position: absolute; left: 90px; bottom: 0; width: 560px; height: 680px;
+    background: var(--person-image) bottom center / contain no-repeat;
+  }
+
+  .logo {
+    position: absolute; padding: 6px 16px; border-radius: 14px; background: #fff;
+    color: var(--logo-blue); font-weight: 700; font-size: 44px; letter-spacing: 1px;
+    transform: rotate(-8deg); box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  }
+  .logo.top { left: 28px; top: 34px; }
+  .logo.bottom { left: 6px; bottom: 6px; }
+  .cap { position: absolute; font-size: 80px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+  .cap.top { right: 30px; top: 10px; transform: rotate(10deg); }
+  .cap.bottom { right: 20px; bottom: 10px; transform: rotate(-10deg); }
+
+  .title {
+    position: absolute; left: 0; right: 0; bottom: 52px; text-align: center;
+    text-transform: uppercase; line-height: 1.02; font-size: 72px;
+    -webkit-text-stroke: 3px #000; paint-order: stroke fill;
+    text-shadow: 0 6px 0 #000, 0 10px 20px rgba(0,0,0,.6);
+  }
+  .title .line1 { color: var(--text); }
+  .title .line2 { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="thumb">
+    <div class="formulas">
+      <span style="left:540px; top:40px">dv/dx (x − y) = ∫ x² dt</span>
+      <span style="left:530px; top:140px">d²/dx² (x + y) = − dn/dx</span>
+      <span style="left:540px; top:250px">∫ f(x) = d / √(Πx + |tr|)</span>
+      <span style="left:10px; top:180px; font-size:24px">nⁿ(x) = (x − n)</span>
+      <span style="left:10px; top:300px; font-size:24px">∫ f(x, t) dx</span>
+      <span style="left:10px; top:380px; font-size:24px">d/dx = d²xv(x)/dx</span>
+    </div>
+
+    <div class="person"></div>
+
+    <div class="logo top">AITU</div>
+    <div class="logo bottom">AITU</div>
+    <div class="cap top">🎓</div>
+    <div class="cap bottom">🎓</div>
+
+    <h1 class="title">
+      <div class="line1">Сможет ли Алим сохранить стипендию</div>
+      <div class="line2">или его завалят на калкулусе?</div>
+    </h1>
+  </div>
+</body>
+</html>

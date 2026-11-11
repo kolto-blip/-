@@ -22,7 +22,7 @@ function table(rows, widths) {
 const body = [
   p(D.title, { size: 32, bold: true, align: AlignmentType.CENTER, after: 60 }),
   p(D.variant, { size: 28, bold: true, align: AlignmentType.CENTER, after: 200 }),
-  p("Аты-жөні: ______________________________   Сынып: ________   Күні: ____________", { after: 200 }),
+  p("Аты-жөні: ______________________________   Топ: ________   Күні: ____________", { after: 200 }),
   p("Тапсырма саны — 10. Әр тапсырма — 1 балл (барлығы 10 балл). Әр тапсырмада бір ғана дұрыс жауап бар. Ұсынылатын уақыт — 20 минут.", { after: 240, size: 22 }),
 ];
 D.questions.forEach((x, i) => {
@@ -72,7 +72,7 @@ function createUbtForm() {
       .setProgressBar(true)
       .setShuffleQuestions(false);
   form.addTextItem().setTitle("Аты-жөні").setRequired(true);
-  form.addTextItem().setTitle("Сынып").setRequired(true);
+  form.addTextItem().setTitle("Топ").setRequired(true);
   const letters = ["A", "B", "C", "D"];
   QUESTIONS.forEach(function (q) {
     const item = form.addMultipleChoiceItem();
